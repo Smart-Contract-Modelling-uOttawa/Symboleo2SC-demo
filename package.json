@@ -9,17 +9,17 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "nyc mocha --recursive",
+    "testnyc": "nyc mocha --recursive",
+    "test": "mocha --recursive",
     "start": "fabric-chaincode-node start"
   },
   "engineStrict": true,
   "author": "Hyperledger",
   "license": "Apache-2.0",
   "dependencies": {
-    "fabric-contract-api": "^2.2.2",
-    "fabric-shim": "^2.2.2",
-    "symboleo-js-core": "^1.0.9"
+    "fabric-contract-api": "^2.2.3",
+    "fabric-shim": "^2.2.3",
+    "symboleo-js-core": "github:Smart-Contract-Modelling-uOttawa/Symboleo-JS-Core#aa2054217e36530d598969a97bc72e6107ed5a75"
   },
   "devDependencies": {
     "chai": "^4.3.6",
@@ -28,7 +28,7 @@
     "eslint-plugin-import": "^2.25.4",
     "mocha": "^8.4.0",
     "nyc": "^14.1.1",
-    "sinon": "^6.0.0",
-    "sinon-chai": "^3.2.0"
+    "sinon": "^6.3.5",
+    "sinon-chai": "^3.7.0"
   }
 }

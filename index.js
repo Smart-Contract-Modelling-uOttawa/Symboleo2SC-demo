@@ -179,7 +179,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligation.latePayment != null && contract.obligation.latePayment.violated()) {      
+      if (contract.obligations.latePayment != null && contract.obligations.latePayment.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -199,7 +199,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligation.delivery != null && contract.obligation.delivery.violated()) {      
+      if (contract.obligations.delivery != null && contract.obligations.delivery.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -219,7 +219,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligation.payment != null && contract.obligation.payment.violated()) {      
+      if (contract.obligations.payment != null && contract.obligations.payment.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {

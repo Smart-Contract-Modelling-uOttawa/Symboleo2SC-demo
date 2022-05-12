@@ -90,8 +90,7 @@ const EventListeners = {
       }
     }            
     contract.fulfilledActiveObligations()
-  }
-  
+  },
   unsuccessfullyTerminateContract(contract) {
     for (let index in contract.obligations) { 
       contract.obligations[index].terminated()
