@@ -130,8 +130,8 @@ describe('Meat Sale chain code tests', () => {
     })
   })
 
-  describe('Scenario: payment and delivery are fulfilled', () => {
-    it('should sucessfully terminate contract if payment and delivery are fulfilled', async () => {
+  describe('Scenario: payment and delivery are fulfilled.', () => {
+    it('should sucessfully terminate contract if payment and delivery are fulfilled.', async () => {
       const c = new HFContract()
       const initRes = await c.init(transactionContext, parameters)
       const res = await c.trigger_paid(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
