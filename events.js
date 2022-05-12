@@ -29,6 +29,7 @@ const EventListeners = {
       if (contract.powers.suspendDelivery == null || contract.powers.suspendDelivery.isFinished()){
         contract.powers.suspendDelivery = new Power('suspendDelivery', contract.seller, contract.buyer, contract)
         effects.powerCreated = true
+        effects.powerName = 'suspendDelivery'
         if (true) {
           contract.powers.suspendDelivery.trigerredUnconditional()
         } else {
@@ -44,6 +45,7 @@ const EventListeners = {
       if (contract.powers.terminateContract == null || contract.powers.terminateContract.isFinished()){
         contract.powers.terminateContract = new Power('terminateContract', contract.buyer, contract.seller, contract)
         effects.powerCreated = true
+        effects.powerName = 'terminateContract'
         if (true) {
           contract.powers.terminateContract.trigerredUnconditional()
         } else {
@@ -59,6 +61,7 @@ const EventListeners = {
       if (contract.powers.resumeDelivery == null || contract.powers.resumeDelivery.isFinished()){
         contract.powers.resumeDelivery = new Power('resumeDelivery', contract.buyer, contract.seller, contract)
         effects.powerCreated = true
+        effects.powerName = 'resumeDelivery'
         if (true) {
           contract.powers.resumeDelivery.trigerredUnconditional()
         } else {
@@ -83,19 +86,26 @@ const EventListeners = {
       contract.obligations.latePayment.fulfilled()
     }
   },
-  terminateContract(contract) {
+  successfullyTerminateContract(contract) {
     for (const oblKey of Object.keys(contract.obligations)) {
       if (contract.obligations[oblKey].isActive()) {
         return;
       }
-    }            
+      if (contract.obligations[oblKey].isViolated() && Array.isArray(contract.obligations[oblKey]._createdPowerNames)) {
+        for (const pKey of contract.obligations[oblKey]._createdPowerNames) {
+          if (!contract.powers[pKey].isSuccessfulTermination()) {
+            return;
+          }
+        } 
+      }
+    }
     contract.fulfilledActiveObligations()
   },
   unsuccessfullyTerminateContract(contract) {
-    for (let index in contract.obligations) { 
-      contract.obligations[index].terminated()
+    for (const index in contract.obligations) { 
+      contract.obligations[index].terminated({emitEvent: false})
     }
-    for (let index in contract.powers) {
+    for (const index in contract.powers) {
       contract.powers[index].terminated()
     }            
     contract.terminated()

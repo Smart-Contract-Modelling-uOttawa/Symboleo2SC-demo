@@ -2,14 +2,14 @@
 const sinon = require('sinon')
 const chai = require('chai')
 const sinonChai = require('sinon-chai')
-const {Obligation} = require('symboleo-js-core')
+const { Obligation } = require('symboleo-js-core')
 const expect = chai.expect
 
 const { Context } = require('fabric-contract-api')
 const { ChaincodeStub } = require('fabric-shim')
 
 const [HFContract] = require('../index.js').contracts
-const {serialize, deserialize} = require('../serializer')
+const { serialize, deserialize } = require('../serializer')
 
 let assert = sinon.assert
 chai.use(sinonChai)
@@ -75,8 +75,8 @@ describe('Meat Sale chain code tests', () => {
     parameters = JSON.stringify(parametersObject)
   })
 
-  describe('Test init', () => {
-    it('should return error on init', async () => {
+  describe('Test init transaction.', () => {
+    it('should return error on init.', async () => {
       chaincodeStub.putState.rejects('failed inserting key')
       let c = new HFContract()
       try {
@@ -87,234 +87,214 @@ describe('Meat Sale chain code tests', () => {
       }
     })
 
-    it('should return success on init', async () => {
-      const c = new HFContract()
-      const res = await c.init(transactionContext, parameters)
-      // console.log(res)
-      // let ret = JSON.parse((await chaincodeStub.getState('asset1')).toString());
-      expect(res.successful).to.eql(true)
+    it('should activate contract with the correct state for powers and obligations.', async () => {
+      const c = new HFContract();
+      const initRes = await c.init(transactionContext, parameters);
+      expect(initRes.successful).to.eql(true);
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.state).to.eql("Active")
+      expect(state.activeState).to.eql("InEffect")
+      expect(state.obligations.payment.state).to.eql("Active")
+      expect(state.obligations.payment.activeState).to.eql("InEffect")
+      expect(state.obligations.delivery.state).to.eql("Active")
+      expect(state.obligations.delivery.activeState).to.eql("InEffect")
     })
   })
 
-  describe('Test trigger_paid', () => {
-      it('should change state of paid', async () => {
-          const c = new HFContract();
-          const initRes = await c.init(transactionContext, parameters)
-          const res = await c.trigger_paid(transactionContext, JSON.stringify({contractId: initRes.contractId}));
-          expect(res.successful).to.eql(true);
-          const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-          expect(state.paid._triggered).to.eql(true);
-      });
-  });
+  describe('Test transactions for triggering Events.', () => {
+    it('should change state of paid.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.trigger_paid(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.paid._triggered).to.eql(true)
+    })
 
-  describe('Test trigger_delivered', () => {
-    it('should change state of delivered', async () => {
-        const c = new HFContract();
-        const initRes = await c.init(transactionContext, parameters)
-        const res = await c.trigger_delivered(transactionContext, JSON.stringify({contractId: initRes.contractId}));
-        expect(res.successful).to.eql(true);
-        const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-        expect(state.delivered._triggered).to.eql(true);
-    });
-  });
+    it('should change state of delivered.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.trigger_delivered(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.delivered._triggered).to.eql(true)
+    })
 
-  describe('Test trigger_paidLate', () => {
-    it('should change state of paidLate', async () => {
-        const c = new HFContract();
-        const initRes = await c.init(transactionContext, parameters)
-        const res = await c.trigger_paidLate(transactionContext, JSON.stringify({contractId: initRes.contractId}));
-        expect(res.successful).to.eql(true);
-        const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-        expect(state.paidLate._triggered).to.eql(true);
-    });
-  });
- 
-  describe('Test violateObligation_payment', () => {
-    it('should violate payment', async () => {
-        const c = new HFContract();
-        const initRes = await c.init(transactionContext, parameters)
-        const res = await c.violateObligation_payment(transactionContext, initRes.contractId);
-        expect(res.successful).to.eql(true);
-        const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-        expect(state.obligations.payment.state).to.eql("Violation");
-    });
-  });
+    it('should change state of paidLate.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.paidLate._triggered).to.eql(true)
+    })
+  })
 
-  describe('Test violateObligation_latePayment', () => {
-    it('should violate latePayment', async () => {
-        const c = new HFContract();
-        const initRes = await c.init(transactionContext, parameters)      
-        const state = (await chaincodeStub.getState(initRes.contractId)).toString();
-        const contract = deserialize(state)
-        contract.obligations.latePayment = new Obligation('latePayment', contract.seller, contract.buyer, contract)
-        contract.obligations.latePayment.trigerredUnconditional()
-        await chaincodeStub.putState(initRes.contractId, Buffer.from(serialize(contract)))
-        const res = await c.violateObligation_latePayment(transactionContext, initRes.contractId);
-        expect(res.successful).to.eql(true);
-        const state2 = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-        expect(state2.obligations.latePayment.state).to.eql("Violation");
-    });
-  });
+  describe('Scenario: payment and delivery are fulfilled', () => {
+    it('should sucessfully terminate contract if payment and delivery are fulfilled', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.trigger_paid(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res.successful).to.eql(true)
+      const res2 = await c.trigger_delivered(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res2.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.state).to.eql("SuccessfulTermination")
+      expect(state.obligations.delivery.state).to.eql("Fulfillment")
+      expect(state.obligations.payment.state).to.eql("Fulfillment")
+    })    
+  })
 
-  describe('Test violateObligation_delivery', () => {
-    it('should violate delivery', async () => {
-        const c = new HFContract();
-        const initRes = await c.init(transactionContext, parameters)
-        const res = await c.violateObligation_delivery(transactionContext, initRes.contractId);
-        expect(res.successful).to.eql(true);
-        const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString());
-        expect(state.obligations.delivery.state).to.eql("Violation");
-    });
-  });
+  describe('Scenario: payment is violated.', () => {
+    it('should violate payment.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.payment.state).to.eql("Violation")
+    })
 
-  // describe('Test ReadAsset', () => {
-  //     it('should return error on ReadAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+    it('should trigger latePayment and suspendDelivery if payment is violated.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.payment.state).to.eql("Violation")
+      expect(state.obligations.latePayment.state).to.eql("Active")
+      expect(state.obligations.latePayment.activeState).to.eql("InEffect")
+      expect(state.powers.suspendDelivery.state).to.eql("Active")
+      expect(state.powers.suspendDelivery.activeState).to.eql("InEffect")
+    })
 
-  //         try {
-  //             await assetTransfer.ReadAsset(transactionContext, 'asset2');
-  //             assert.fail('ReadAsset should have failed');
-  //         } catch (err) {
-  //             expect(err.message).to.equal('The asset asset2 does not exist');
-  //         }
-  //     });
+    it('should suspend delivery if suspendDelivery is exerted.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.payment.state).to.eql("Violation")
+      expect(state.obligations.latePayment.state).to.eql("Active")
+      expect(state.obligations.latePayment.activeState).to.eql("InEffect")
+      expect(state.powers.suspendDelivery.state).to.eql("Active")
 
-  //     it('should return success on ReadAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const state2 = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state2.obligations.delivery.state).to.eql("Active")
+      expect(state2.obligations.delivery.activeState).to.eql("Suspension")
+      expect(state2.powers.suspendDelivery.state).to.eql("SuccessfulTermination")
+    })
 
-  //         let ret = JSON.parse(await chaincodeStub.getState(asset.ID));
-  //         expect(ret).to.eql(asset);
-  //     });
-  // });
+    it('should trigger resumeDelivery and fulfill latePayment if paidLate is triggered.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res3.successful).to.eql(true)
 
-  // describe('Test UpdateAsset', () => {
-  //     it('should return error on UpdateAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.powers.resumeDelivery.state).to.eql("Active")
+      expect(state.powers.resumeDelivery.activeState).to.eql("InEffect")
+      expect(state.obligations.latePayment.state).to.eql("Fulfillment")
+    })
 
-  //         try {
-  //             await assetTransfer.UpdateAsset(transactionContext, 'asset2', 'orange', 10, 'Me', 500);
-  //             assert.fail('UpdateAsset should have failed');
-  //         } catch (err) {
-  //             expect(err.message).to.equal('The asset asset2 does not exist');
-  //         }
-  //     });
+    it('should resume delivery if resumeDelivery is exerted.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res3.successful).to.eql(true)
+      const res4 = await c.power_resumedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res4.successful).to.eql(true)
 
-  //     it('should return success on UpdateAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.powers.resumeDelivery.state).to.eql("SuccessfulTermination")
+      expect(state.obligations.delivery.state).to.eql("Active")
+      expect(state.obligations.delivery.activeState).to.eql("InEffect")
+    })
 
-  //         await assetTransfer.UpdateAsset(transactionContext, 'asset1', 'orange', 10, 'Me', 500);
-  //         let ret = JSON.parse(await chaincodeStub.getState(asset.ID));
-  //         let expected = {
-  //             ID: 'asset1',
-  //             Color: 'orange',
-  //             Size: 10,
-  //             Owner: 'Me',
-  //             AppraisedValue: 500
-  //         };
-  //         expect(ret).to.eql(expected);
-  //     });
-  // });
+    it('should successfully terminate contract if delivered is triggered.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res3.successful).to.eql(true)
+      const res4 = await c.power_resumedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res4.successful).to.eql(true)
+      const res5 = await c.trigger_delivered(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
+      expect(res5.successful).to.eql(true)
 
-  // describe('Test DeleteAsset', () => {
-  //     it('should return error on DeleteAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.state).to.eql("SuccessfulTermination")
+      expect(state.obligations.delivery.state).to.eql("Fulfillment")
+      expect(state.obligations.latePayment.state).to.eql("Fulfillment")
+    })
 
-  //         try {
-  //             await assetTransfer.DeleteAsset(transactionContext, 'asset2');
-  //             assert.fail('DeleteAsset should have failed');
-  //         } catch (err) {
-  //             expect(err.message).to.equal('The asset asset2 does not exist');
-  //         }
-  //     });
+    it('should unsuccessfully terminate contract if latePayment is violated.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const res3 = await c.violateObligation_latePayment(transactionContext, initRes.contractId)
+      expect(res3.successful).to.eql(true)
 
-  //     it('should return success on DeleteAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.state).to.eql("UnsuccessfulTermination")
+      expect(state.obligations.delivery.state).to.eql("UnsuccessfulTermination")
+    })
+    
+  })
 
-  //         await assetTransfer.DeleteAsset(transactionContext, asset.ID);
-  //         let ret = await chaincodeStub.getState(asset.ID);
-  //         expect(ret).to.equal(undefined);
-  //     });
-  // });
+  describe('Scenario: delivery is violated.', () => {
+    it('should violate delivery.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_delivery(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.delivery.state).to.eql("Violation")
+    })
 
-  // describe('Test TransferAsset', () => {
-  //     it('should return error on TransferAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
+    it('should trigger terminateContract if delivery is violated.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_delivery(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.delivery.state).to.eql("Violation")
+      expect(state.powers.terminateContract.state).to.eql("Active")
+      expect(state.powers.terminateContract.activeState).to.eql("InEffect")
+    })
 
-  //         try {
-  //             await assetTransfer.TransferAsset(transactionContext, 'asset2', 'Me');
-  //             assert.fail('DeleteAsset should have failed');
-  //         } catch (err) {
-  //             expect(err.message).to.equal('The asset asset2 does not exist');
-  //         }
-  //     });
+    it('should terminateContract if terminateContract is exerted.', async () => {
+      const c = new HFContract()
+      const initRes = await c.init(transactionContext, parameters)
+      const res = await c.violateObligation_delivery(transactionContext, initRes.contractId)
+      expect(res.successful).to.eql(true)
+      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state.obligations.delivery.state).to.eql("Violation")
+      expect(state.powers.terminateContract.state).to.eql("Active")
+      expect(state.powers.terminateContract.activeState).to.eql("InEffect")
 
-  //     it('should return success on TransferAsset', async () => {
-  //         let assetTransfer = new AssetTransfer();
-  //         await assetTransfer.CreateAsset(transactionContext, asset.ID, asset.Color, asset.Size, asset.Owner, asset.AppraisedValue);
-
-  //         await assetTransfer.TransferAsset(transactionContext, asset.ID, 'Me');
-  //         let ret = JSON.parse((await chaincodeStub.getState(asset.ID)).toString());
-  //         expect(ret).to.eql(Object.assign({}, asset, {Owner: 'Me'}));
-  //     });
-  // });
-
-  // describe('Test GetAllAssets', () => {
-  //     it('should return success on GetAllAssets', async () => {
-  //         let assetTransfer = new AssetTransfer();
-
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset1', 'blue', 5, 'Robert', 100);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset2', 'orange', 10, 'Paul', 200);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset3', 'red', 15, 'Troy', 300);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset4', 'pink', 20, 'Van', 400);
-
-  //         let ret = await assetTransfer.GetAllAssets(transactionContext);
-  //         ret = JSON.parse(ret);
-  //         expect(ret.length).to.equal(4);
-
-  //         let expected = [
-  //             {Record: {ID: 'asset1', Color: 'blue', Size: 5, Owner: 'Robert', AppraisedValue: 100}},
-  //             {Record: {ID: 'asset2', Color: 'orange', Size: 10, Owner: 'Paul', AppraisedValue: 200}},
-  //             {Record: {ID: 'asset3', Color: 'red', Size: 15, Owner: 'Troy', AppraisedValue: 300}},
-  //             {Record: {ID: 'asset4', Color: 'pink', Size: 20, Owner: 'Van', AppraisedValue: 400}}
-  //         ];
-
-  //         expect(ret).to.eql(expected);
-  //     });
-
-  //     it('should return success on GetAllAssets for non JSON value', async () => {
-  //         let assetTransfer = new AssetTransfer();
-
-  //         chaincodeStub.putState.onFirstCall().callsFake((key, value) => {
-  //             if (!chaincodeStub.states) {
-  //                 chaincodeStub.states = {};
-  //             }
-  //             chaincodeStub.states[key] = 'non-json-value';
-  //         });
-
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset1', 'blue', 5, 'Robert', 100);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset2', 'orange', 10, 'Paul', 200);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset3', 'red', 15, 'Troy', 300);
-  //         await assetTransfer.CreateAsset(transactionContext, 'asset4', 'pink', 20, 'Van', 400);
-
-  //         let ret = await assetTransfer.GetAllAssets(transactionContext);
-  //         ret = JSON.parse(ret);
-  //         expect(ret.length).to.equal(4);
-
-  //         let expected = [
-  //             {Record: 'non-json-value'},
-  //             {Record: {ID: 'asset2', Color: 'orange', Size: 10, Owner: 'Paul', AppraisedValue: 200}},
-  //             {Record: {ID: 'asset3', Color: 'red', Size: 15, Owner: 'Troy', AppraisedValue: 300}},
-  //             {Record: {ID: 'asset4', Color: 'pink', Size: 20, Owner: 'Van', AppraisedValue: 400}}
-  //         ];
-
-  //         expect(ret).to.eql(expected);
-  //     });
-  // });
+      const res2 = await c.power_terminatedContract(transactionContext, initRes.contractId)
+      expect(res2.successful).to.eql(true)
+      const state2 = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
+      expect(state2.state).to.eql("UnsuccessfulTermination")
+      expect(state2.obligations.payment.state).to.eql("UnsuccessfulTermination")
+      expect(state2.powers.terminateContract.state).to.eql("SuccessfulTermination")
+    })    
+  })
 })

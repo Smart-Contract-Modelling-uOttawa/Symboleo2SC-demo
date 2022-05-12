@@ -34,6 +34,8 @@ function deserialize(data) {
     const obligation = new Obligation('latePayment', contract.seller, contract.buyer, contract)
     obligation.state = object.obligations.latePayment.state
     obligation.activeState = object.obligations.latePayment.activeState
+    obligation._createdPowerNames = object.obligations.latePayment._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.latePayment._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
       if (object.obligations.latePayment._events[eventType] != null) {
         const eventObject = new Event()
@@ -48,6 +50,8 @@ function deserialize(data) {
     const obligation = new Obligation('delivery', contract.buyer, contract.seller, contract)
     obligation.state = object.obligations.delivery.state
     obligation.activeState = object.obligations.delivery.activeState
+    obligation._createdPowerNames = object.obligations.delivery._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.delivery._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
       if (object.obligations.delivery._events[eventType] != null) {
         const eventObject = new Event()
@@ -62,6 +66,8 @@ function deserialize(data) {
     const obligation = new Obligation('payment', contract.seller, contract.buyer, contract)
     obligation.state = object.obligations.payment.state
     obligation.activeState = object.obligations.payment.activeState
+    obligation._createdPowerNames = object.obligations.payment._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.payment._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
       if (object.obligations.payment._events[eventType] != null) {
         const eventObject = new Event()

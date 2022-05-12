@@ -102,7 +102,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect() && contract.powers.suspendDelivery != null && contract.powers.suspendDelivery.isInEffect()) {
-      const obligation = contractState.obligations.delivery
+      const obligation = contract.obligations.delivery
       if (obligation != null && obligation.suspended() && contract.powers.suspendDelivery.exerted()) {
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
@@ -123,7 +123,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect() && contract.powers.resumeDelivery != null && contract.powers.resumeDelivery.isInEffect()) {
-      const obligation = contractState.obligations.delivery
+      const obligation = contract.obligations.delivery
       if (obligation != null && obligation.resumed() && contract.powers.resumeDelivery.exerted()) {
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
