@@ -8,8 +8,8 @@ const expect = chai.expect
 const { Context } = require('fabric-contract-api')
 const { ChaincodeStub } = require('fabric-shim')
 
-const [HFContract] = require('../index.js').contracts
-const { serialize, deserialize } = require('../serializer')
+const [HFContract] = require('../MeatSale/index').contracts
+const { serialize, deserialize } = require('../MeatSale/serializer')
 
 let assert = sinon.assert
 chai.use(sinonChai)
@@ -101,35 +101,6 @@ describe('Meat Sale chain code tests', () => {
     })
   })
 
-  describe('Test transactions for triggering Events.', () => {
-    it('should change state of paid.', async () => {
-      const c = new HFContract()
-      const initRes = await c.init(transactionContext, parameters)
-      const res = await c.trigger_paid(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
-      expect(res.successful).to.eql(true)
-      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
-      expect(state.paid._triggered).to.eql(true)
-    })
-
-    it('should change state of delivered.', async () => {
-      const c = new HFContract()
-      const initRes = await c.init(transactionContext, parameters)
-      const res = await c.trigger_delivered(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
-      expect(res.successful).to.eql(true)
-      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
-      expect(state.delivered._triggered).to.eql(true)
-    })
-
-    it('should change state of paidLate.', async () => {
-      const c = new HFContract()
-      const initRes = await c.init(transactionContext, parameters)
-      const res = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
-      expect(res.successful).to.eql(true)
-      const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
-      expect(state.paidLate._triggered).to.eql(true)
-    })
-  })
-
   describe('Scenario: payment and delivery are fulfilled.', () => {
     it('should sucessfully terminate contract if payment and delivery are fulfilled.', async () => {
       const c = new HFContract()
@@ -179,7 +150,7 @@ describe('Meat Sale chain code tests', () => {
       expect(state.obligations.latePayment.activeState).to.eql("InEffect")
       expect(state.powers.suspendDelivery.state).to.eql("Active")
 
-      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      const res2 = await c.p_suspendDelivery_suspended_o_delivery(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const state2 = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
       expect(state2.obligations.delivery.state).to.eql("Active")
@@ -192,7 +163,7 @@ describe('Meat Sale chain code tests', () => {
       const initRes = await c.init(transactionContext, parameters)
       const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
       expect(res.successful).to.eql(true)
-      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      const res2 = await c.p_suspendDelivery_suspended_o_delivery(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
       expect(res3.successful).to.eql(true)
@@ -208,11 +179,11 @@ describe('Meat Sale chain code tests', () => {
       const initRes = await c.init(transactionContext, parameters)
       const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
       expect(res.successful).to.eql(true)
-      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      const res2 = await c.p_suspendDelivery_suspended_o_delivery(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
       expect(res3.successful).to.eql(true)
-      const res4 = await c.power_resumedObligation_delivery(transactionContext, initRes.contractId)
+      const res4 = await c.p_resumeDelivery_resumed_o_delivery(transactionContext, initRes.contractId)
       expect(res4.successful).to.eql(true)
 
       const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
@@ -226,11 +197,11 @@ describe('Meat Sale chain code tests', () => {
       const initRes = await c.init(transactionContext, parameters)
       const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
       expect(res.successful).to.eql(true)
-      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      const res2 = await c.p_suspendDelivery_suspended_o_delivery(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const res3 = await c.trigger_paidLate(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
       expect(res3.successful).to.eql(true)
-      const res4 = await c.power_resumedObligation_delivery(transactionContext, initRes.contractId)
+      const res4 = await c.p_resumeDelivery_resumed_o_delivery(transactionContext, initRes.contractId)
       expect(res4.successful).to.eql(true)
       const res5 = await c.trigger_delivered(transactionContext, JSON.stringify({ contractId: initRes.contractId }))
       expect(res5.successful).to.eql(true)
@@ -246,7 +217,7 @@ describe('Meat Sale chain code tests', () => {
       const initRes = await c.init(transactionContext, parameters)
       const res = await c.violateObligation_payment(transactionContext, initRes.contractId)
       expect(res.successful).to.eql(true)
-      const res2 = await c.power_suspendedObligation_delivery(transactionContext, initRes.contractId)
+      const res2 = await c.p_suspendDelivery_suspended_o_delivery(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const res3 = await c.violateObligation_latePayment(transactionContext, initRes.contractId)
       expect(res3.successful).to.eql(true)
@@ -289,7 +260,7 @@ describe('Meat Sale chain code tests', () => {
       expect(state.powers.terminateContract.state).to.eql("Active")
       expect(state.powers.terminateContract.activeState).to.eql("InEffect")
 
-      const res2 = await c.power_terminatedContract(transactionContext, initRes.contractId)
+      const res2 = await c.p_terminateContract_terminated_contract(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const state2 = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
       expect(state2.state).to.eql("UnsuccessfulTermination")

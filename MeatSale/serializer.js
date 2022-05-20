@@ -23,10 +23,9 @@ function deserialize(data) {
     }
   }
 
-  for (const key of ['delivered','paidLate','paid']) {
-    if (object[key]._triggered === true) {
-      contract[key]._triggered = true
-      contract[key]._timestamp = object[key]._timestamp
+  for (const key of ['delivered','paidLate','paid','disclosed']) {
+    for(const eKey of Object.keys(object[key])) {
+      contract[key][eKey] = object[key][eKey]
     }
   }
 

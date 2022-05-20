@@ -39,22 +39,6 @@ const EventListeners = {
     }
     return effects
   },
-  createPower_terminateContract(contract) {
-    const effects = { powerCreated: false } 
-    if (Predicates.happens(contract.obligations.delivery && contract.obligations.delivery._events.Violated)) {
-      if (contract.powers.terminateContract == null || contract.powers.terminateContract.isFinished()){
-        contract.powers.terminateContract = new Power('terminateContract', contract.buyer, contract.seller, contract)
-        effects.powerCreated = true
-        effects.powerName = 'terminateContract'
-        if (true) {
-          contract.powers.terminateContract.trigerredUnconditional()
-        } else {
-          contract.powers.terminateContract.trigerredConditional()
-        }
-      }
-    }
-    return effects
-  },
   createPower_resumeDelivery(contract) {
     const effects = { powerCreated: false } 
     if (Predicates.happensWithin(contract.paidLate, contract.obligations.delivery, "Obligation.Suspension")) {
@@ -71,6 +55,27 @@ const EventListeners = {
     }
     return effects
   },
+  createPower_terminateContract(contract) {
+    const effects = { powerCreated: false } 
+    if (Predicates.happens(contract.obligations.delivery && contract.obligations.delivery._events.Violated)) {
+      if (contract.powers.terminateContract == null || contract.powers.terminateContract.isFinished()){
+        contract.powers.terminateContract = new Power('terminateContract', contract.buyer, contract.seller, contract)
+        effects.powerCreated = true
+        effects.powerName = 'terminateContract'
+        if (true) {
+          contract.powers.terminateContract.trigerredUnconditional()
+        } else {
+          contract.powers.terminateContract.trigerredConditional()
+        }
+      }
+    }
+    return effects
+  },
+  fulfillObligation_latePayment(contract) { 
+    if (contract.obligations.latePayment != null && (Predicates.happens(contract.paidLate))) {
+      contract.obligations.latePayment.fulfilled()
+    }
+  },
   fulfillObligation_delivery(contract) { 
     if (contract.obligations.delivery != null && (Predicates.weakHappensBefore(contract.delivered, contract.delivered.delDueDate))) {
       contract.obligations.delivery.fulfilled()
@@ -79,11 +84,6 @@ const EventListeners = {
   fulfillObligation_payment(contract) { 
     if (contract.obligations.payment != null && (Predicates.weakHappensBefore(contract.paid, contract.paid.payDueDate))) {
       contract.obligations.payment.fulfilled()
-    }
-  },
-  fulfillObligation_latePayment(contract) { 
-    if (contract.obligations.latePayment != null && (Predicates.happens(contract.paidLate))) {
-      contract.obligations.latePayment.fulfilled()
     }
   },
   successfullyTerminateContract(contract) {
@@ -96,18 +96,18 @@ const EventListeners = {
           if (!contract.powers[pKey].isSuccessfulTermination()) {
             return;
           }
-        } 
+        }
       }
     }
     contract.fulfilledActiveObligations()
   },
   unsuccessfullyTerminateContract(contract) {
-    for (const index in contract.obligations) { 
+    for (let index in contract.obligations) { 
       contract.obligations[index].terminated({emitEvent: false})
     }
-    for (const index in contract.powers) {
+    for (let index in contract.powers) {
       contract.powers[index].terminated()
-    }            
+    }
     contract.terminated()
   }     
 }
@@ -116,11 +116,11 @@ function getEventMap(contract) {
   return [
     [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.payment), ], EventListeners.createObligation_latePayment],
     [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.payment), ], EventListeners.createPower_suspendDelivery],
-    [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.delivery), ], EventListeners.createPower_terminateContract],
     [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidLate), ], EventListeners.createPower_resumeDelivery],
+    [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.delivery), ], EventListeners.createPower_terminateContract],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidLate), ], EventListeners.fulfillObligation_latePayment],
     [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.delivered), ], EventListeners.fulfillObligation_delivery],
     [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paid), ], EventListeners.fulfillObligation_payment],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidLate), ], EventListeners.fulfillObligation_latePayment],
   ]
 }
 

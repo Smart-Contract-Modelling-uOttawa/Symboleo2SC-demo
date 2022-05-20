@@ -1,0 +1,64 @@
+Domain transactiveEnergyAgreementDomain
+  ISO isA Role;
+  DERP isA Role;
+  DispatchInstruction isAn Asset with maxVoltage: Number, minVoltage: Number;
+  Bid isAn Asset with 
+    id: String,
+    dispatchStartTime: Date,
+    dispatchEndTime: Date,
+    energy: Number,
+    price: Number,
+    instruction: DispatchInstruction;
+  BidAccepted isAn Event with Env bid: Bid;
+  EnergySupplied isAn Event with
+    Env energy: Number,
+    Env dispatchStartTime: Date, 
+    Env dispatchEndTime: Date, 
+    Env voltage: Number,
+    Env ampere: Number;
+  Invoice isAn Asset with id: String, date: Date, amount: Number;
+  InvoiceIssued isAn Event with Env invoice: Invoice;
+  NoticeIssued isAn Event;
+  Paid isAn Event with Env invoiceId: String, from: ISO, to: DERP;
+  PaidPenalty isAn Event with Env invoiceId: String, from: DERP, to: ISO;
+endDomain
+
+Contract TransactiveEnergyAgreement (caiso: ISO, derp: DERP)
+
+Declarations 
+  bidAccepted: BidAccepted;
+  energySupplied: EnergySupplied;
+  caisoTerminationNoticeIssued: NoticeIssued;
+  derpTerminationNoticeIssued: NoticeIssued;
+  creditInvoiceIssued: InvoiceIssued;
+  isoPaid: Paid with from := caiso, to:= derp;
+  penaltyInvoiceIssued: InvoiceIssued;
+  paidPenalty: PaidPenalty with from := derp, to:= caiso;
+
+Obligations
+  paybyISO: Happens(Fulfilled(obligations.supplyEnergy)) ->
+    O(caiso, derp, true,
+      Happens(creditInvoiceIssued) and HappensWithin(isoPaid, Interval(creditInvoiceIssued._timestamp, Date.add(creditInvoiceIssued._timestamp, 4, days)))
+    );
+  supplyEnergy: Happens(bidAccepted) -> 
+    O(derp, caiso, true,
+      Happens(energySupplied) and
+      energySupplied.dispatchStartTime <= bidAccepted.bid.dispatchStartTime and 
+      energySupplied.dispatchEndTime <= bidAccepted.bid.dispatchEndTime and
+      energySupplied.voltage >= bidAccepted.bid.instruction.minVoltage and
+      energySupplied.voltage <= bidAccepted.bid.instruction.maxVoltage
+    );
+  payPenalty: Happens(Exerted(powers.imposePenalty)) -> 
+    O(derp, caiso, true, Happens(penaltyInvoiceIssued) and ShappensBefore(paidPenalty, Date.add(penaltyInvoiceIssued._timestamp, 4, days))); 
+
+Powers
+  terminateAgreement: Happens(Violated(obligations.payPenalty)) -> P(caiso, derp, Happens(caisoTerminationNoticeIssued), Terminated(self));
+  // and ShappensBefore(caisoTerminationNoticeIssued, now.time- 30 days)
+  terminateAgreementBySupplier: P(derp, caiso, Happens(derpTerminationNoticeIssued), Terminated(self));
+  // ShappensBefore(derpTerminationNoticeIssued, now.time - 90 days) and Happens(Timer(a, )
+  imposePenalty: Happens(Violated(obligations.supplyEnergy))-> P(caiso, derp, true, Triggered(obligations.payPenalty));
+
+Constraints
+//not(IsEqual(caiso, derp));
+
+endContract

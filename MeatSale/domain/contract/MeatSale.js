@@ -43,7 +43,7 @@ class MeatSale extends SymboleoContract {
     this.delivered.deliveryAddress = this.delAdd
     this.delivered.delDueDate = Utils.addTime(this.effDate, this.delDueDateDays, "days")
     this.paidLate = new PaidLate("paidLate")
-    this.paidLate.amount = (1 + this.interestRate / 100) * this.amt
+    this.paidLate.amount = (1 + this.interestRate / Math.abs(3))
     this.paidLate.currency = this.curr
     this.paidLate.from = this.buyer
     this.paidLate.to = this.seller
@@ -53,6 +53,7 @@ class MeatSale extends SymboleoContract {
     this.paid.from = this.buyer
     this.paid.to = this.seller
     this.paid.payDueDate = this.payDueDate
+    this.disclosed = new Disclosed("disclosed")
     
     // create instance of triggered obligations
     this.obligations.delivery = new Obligation('delivery', this.buyer, this.seller, this)

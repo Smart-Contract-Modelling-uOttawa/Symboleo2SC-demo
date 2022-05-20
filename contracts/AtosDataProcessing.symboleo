@@ -1,0 +1,71 @@
+Domain AtosDataProcessing
+
+Processor isA Role;     
+Controller isA Role; //client
+
+OriginDataType isAn Enumeration(DataSubject, Customer, ExectingProcessing, DataBroker, OnlinePlatform, ExternalSource, ThirdParty, Other);
+RegionData isAn Enumeration(EU, APAC, BTN, MEA, MAD, SAM);
+CatSubjects isAn Enumeration(Employees, Customers, Providers, EndUsers, Members, Visitors, Other);
+CateProcessingAct isAn Enumeration(Collection, Recording, Organization, Structuring, Storage, Adaption, Retrieval, RemoteAccess, Consultation,
+	                             Use, Disclosure, Others);
+
+Instruction isA Asset with originData: OriginDataType, regionData : RegionData, categoriesDataSubjects: CatSubjects,
+                             categoriesProcessingActivity: CateProcessingAct; 
+
+ProccessedData isA Event with Env instruction: Instruction, dataType: DataType, Env id: String; 
+// Atos has an obligation to trigger this event after processing
+
+
+DataType isAn Enumeration(Personal, Biometric);
+                            
+                          	                             	                             	                                            	                             
+DpEvent isA Event with Env instruction: Instruction;
+
+DeliveredRecord isA Event with id: String;
+RequestReco isA Event with id: String;
+RecordedProcess isA Event with id: String;
+
+Paid isA Event with Env amount: Number;
+
+endDomain
+
+Contract AtosDataProcessing (atos: Processor, client: Controller, inst:Instruction, dType: DataType, dataPointId: String)
+
+Declarations 
+processedData : ProccessedData with dataType := dType; 
+adaptedInst : DpEvent;
+infringNotified : DpEvent; 
+suspendNoticed : DpEvent;
+modifiedInst : DpEvent;
+recoProcessedData : RecordedProcess with id := dataPointId;
+paid : Paid;  
+deliveredRecord : DeliveredRecord with id := dataPointId;
+requestedRecord : RequestReco with id := dataPointId;
+
+Obligations
+oproccData: O(atos, client, true, Happens(processedData));    
+
+oproccDataInst: Happens(processedData) -> O(client, atos, true, ((processedData.instruction.originData == inst.originData) and 
+	                                                               (processedData.instruction.regionData == inst.regionData) and 
+	                                                               (processedData.instruction.categoriesDataSubjects == inst.categoriesDataSubjects) and             
+	                                                               (processedData.instruction.categoriesProcessingActivity == inst.categoriesProcessingActivity)
+	                                                               and dataPointId == processedData.id));
+	                                                                    
+oadaptInst : Happens(infringNotified) -> O(client, atos, true, Happens(adaptedInst));
+
+orecordData : Happens(processedData) -> O(atos, client, true, Happens(recoProcessedData) and processedData.id == recoProcessedData.id and processedData.id == dataPointId);
+
+opaid :  Happens(processedData) -> O(client, atos, true, Happens(paid));
+
+odelRecord : Happens(requestedRecord) -> O(atos, client, requestedRecord.id == dataPointId, Happens(deliveredRecord) 
+	                                        and (requestedRecord.id == deliveredRecord.id));
+                                     
+Powers
+psuspendPerformance : Happens(Violated(obligations.oadaptInst)) -> P(atos, client, Happens(suspendNoticed), Suspended(obligations.oproccData));
+presumPerformance : Happens(modifiedInst) -> P(client, atos, true, Resumed(obligations.oproccData));
+
+
+Constraints
+	not(atos == client);
+
+endContract
