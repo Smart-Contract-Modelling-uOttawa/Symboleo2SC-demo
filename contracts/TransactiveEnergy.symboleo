@@ -29,7 +29,9 @@ Declarations
   bidAccepted: BidAccepted;
   energySupplied: EnergySupplied;
   caisoTerminationNoticeIssued: NoticeIssued;
+  terminationNoticeThirtyDays: NoticeIssued;
   derpTerminationNoticeIssued: NoticeIssued;
+  terminationNoticeNinetyDays: NoticeIssued;
   creditInvoiceIssued: InvoiceIssued;
   isoPaid: Paid with from := caiso, to:= derp;
   penaltyInvoiceIssued: InvoiceIssued;
@@ -52,13 +54,11 @@ Obligations
     O(derp, caiso, true, Happens(penaltyInvoiceIssued) and ShappensBefore(paidPenalty, Date.add(penaltyInvoiceIssued._timestamp, 4, days))); 
 
 Powers
-  terminateAgreement: Happens(Violated(obligations.payPenalty)) -> P(caiso, derp, Happens(caisoTerminationNoticeIssued), Terminated(self));
-  // and ShappensBefore(caisoTerminationNoticeIssued, now.time- 30 days)
-  terminateAgreementBySupplier: P(derp, caiso, Happens(derpTerminationNoticeIssued), Terminated(self));
-  // ShappensBefore(derpTerminationNoticeIssued, now.time - 90 days) and Happens(Timer(a, )
-  imposePenalty: Happens(Violated(obligations.supplyEnergy))-> P(caiso, derp, true, Triggered(obligations.payPenalty));
+  terminateAgreement: Happens(Violated(obligations.payPenalty)) -> P(caiso, derp, Happens(caisoTerminationNoticeIssued) and Happens(terminationNoticeThirtyDays), Terminated(self));
+  terminateAgreementBySupplier: P(derp, caiso, Happens(derpTerminationNoticeIssued) and Happens(terminationNoticeNinetyDays), Terminated(self));
+  imposePenalty: Happens(Violated(obligations.supplyEnergy)) -> P(caiso, derp, true, Triggered(obligations.payPenalty));
 
 Constraints
-//not(IsEqual(caiso, derp));
+  not(IsEqual(caiso, derp));
 
 endContract

@@ -1,0 +1,90 @@
+Domain DataProcessingAgreementDomain
+  Processor isA Role;     
+  Controller isA Role; //client
+  
+  Origin isAn Enumeration(DataSubject, Customer, ExectingProcessing, DataBroker, OnlinePlatform, ExternalSource, ThirdParty, Other);
+  Region isAn Enumeration(EU, APAC, BTN, MEA, MAD, SAM);
+  CategorySubjects isAn Enumeration(Employees, Customers, Providers, EndUsers, Members, Visitors, Other);
+  ProcessingActitvity isAn Enumeration(Collection, Recording, Organization, Structuring, Storage, Adaption, Retrieval, RemoteAccess, Consultation,
+  	                             Use, Disclosure, Others);
+  	                             
+  // processing instruction provided by the client.
+  Instruction isAn Asset with origin: Origin, region : Region, categorySubjects: CategorySubjects,
+                               processingActitvity: ProcessingActitvity, isPersonal: Boolean;
+  // data to be processed by the service provider.
+  // content must not contain the real data. It can be metadata, a hash, etc.
+  Data isAn Asset with id: String, content: String; 
+  
+  // event to emit when client transfers a data point to be processed.
+  RequestDataProcessing isAn Event with Env dataPoint: Data;
+  // event to emit when data is processed by the provider.
+  ProcessData isAn Event with Env dataId: String, Env instruction: Instruction;
+   
+  // event to emit when the instruction is updated.
+  ModifyInstruction isAn Event with Env instruction: Instruction;                                            	                             	                             	                                            	                             
+  
+  // client can request records of the processing done on a data point.
+  RequestRecordOfProcessing isAn Event with Env dataId: String;
+  DeliverRecordOfProcessing isAn Event with Env dataId: String, Env processingInstruction: Instruction;
+  
+  Notice isAn Event;
+  Pay isAn Event with Env amount: Number;
+  RequestPayment isAn Event with Env amount: Number;
+endDomain
+
+Contract DataProcessingAgreement (serviceProvider: Processor, client: Controller, instruction: Instruction)
+
+Declarations 
+  requestedDataProcessing: RequestDataProcessing;
+  processedData: ProcessData;
+  requestedRecordOfProcessing: RequestRecordOfProcessing;
+  deliveredRecordOfProcessing: DeliverRecordOfProcessing;
+  adaptedInstruction: ModifyInstruction;
+  infringementNotified: Notice;
+  suspensionNotified: Notice;
+  clientAgreedTermination: Notice;
+  providerAgreedTermination: Notice;
+  paidServiceProvider: Pay;
+  requestedPayment: RequestPayment;
+
+Obligations
+  // the serviceProvider is obliged to provide data processing services to the client. 
+  // the contract is ongoing and it is terminated when the client pays the amount due and both parties agree to terminate the contract. 
+  provideDataProcessingService: O(serviceProvider, client, true, Happens(clientAgreedTermination) and Happens(providerAgreedTermination));
+  payment: Happens(requestedPayment) -> O(client, serviceProvider, true, Happens(paidServiceProvider) and requestedPayment.amount == paidServiceProvider.amount);
+  
+  // the serviceProvider must process data according to the initial instructions or the modified instructions provided by the client.
+  processData: Happens(requestedDataProcessing) -> 
+    O(serviceProvider, client, true, Happens(processedData) and 
+      ((Happens(adaptedInstruction) and
+        processedData.instruction.origin == adaptedInstruction.instruction.origin and 
+        processedData.instruction.region == adaptedInstruction.instruction.region and 
+        processedData.instruction.categorySubjects == adaptedInstruction.instruction.categorySubjects and             
+        processedData.instruction.processingActitvity == adaptedInstruction.instruction.processingActitvity and
+        processedData.dataId == requestedDataProcessing.dataPoint.id
+      ) or (
+        processedData.instruction.origin == instruction.origin and 
+  	    processedData.instruction.region == instruction.region and 
+  	    processedData.instruction.categorySubjects == instruction.categorySubjects and             
+  	    processedData.instruction.processingActitvity == instruction.processingActitvity and
+  	    processedData.dataId == requestedDataProcessing.dataPoint.id 
+  	  ))
+    );
+  
+  // the client must update the instructions if the serviceProvider founds any infringement of the Applicable Data Protection Law.
+  adaptInstruction: Happens(infringementNotified) -> O(client, serviceProvider, true, Happens(adaptedInstruction));
+  
+  // the serviceProvider must deliver records of processing of a data point when requested by the client.
+  deliverProcessingRecord: Happens(requestedRecordOfProcessing) -> 
+    O(serviceProvider, client, true, Happens(deliveredRecordOfProcessing) and (requestedRecordOfProcessing.dataId == deliveredRecordOfProcessing.dataId));
+
+Powers
+  // the service provider can suspend its services when the adaptInstruciton obligation is violated.
+  suspendService: Happens(Violated(obligations.adaptInstruction)) -> P(serviceProvider, client, Happens(suspensionNotified), Suspended(obligations.provideDataProcessingService));
+  suspendActiveRequest: Happens(Violated(obligations.adaptInstruction)) -> P(serviceProvider, client, Happens(suspensionNotified), Terminated(obligations.processData));
+  // the client can resume the provideDataProcessingService obligation if the instruction is adapted.
+  resumeService: Happens(adaptedInstruction) -> P(client, serviceProvider, true, Resumed(obligations.provideDataProcessingService));
+
+Constraints
+	not(serviceProvider == client);
+endContract

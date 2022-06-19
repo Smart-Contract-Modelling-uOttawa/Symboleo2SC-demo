@@ -176,7 +176,7 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
   //   })
   // })
 
-  describe('Scenario: bidAccepted and paybyISO and supplyEnergy are fulfilled.', () => {
+  describe('Scenario 1: bidAccepted and paybyISO and supplyEnergy are fulfilled.', () => {
     it('should trigger supplyEnergy if bidAccepted happens.', async () => {
       const c = new HFContract()
       const initRes = await c.init(transactionContext, parameters)
@@ -220,7 +220,7 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
     })    
   })
 
-  describe('Scenario2: supplyEnergy is violated', () => {
+  describe('Scenario 2: supplyEnergy is violated', () => {
     it('should activate imposePenalty if supplyEnergy is violated.', async () => {
       const c = new HFContract()
       const initRes = await c.init(transactionContext, parameters)
@@ -275,6 +275,7 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
       expect((await c.trigger_penaltyInvoiceIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
       expect((await c.violateObligation_payPenalty(transactionContext, initRes.contractId)).successful).to.eql(true)
       expect((await c.trigger_caisoTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
+      expect((await c.trigger_terminationNoticeThirtyDays(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
       const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
       expect(state.obligations.payPenalty.state).to.eql("Violation")
       expect(state.powers.terminateAgreement.state).to.eql("Active")
@@ -290,6 +291,7 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
       expect((await c.trigger_penaltyInvoiceIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
       expect((await c.violateObligation_payPenalty(transactionContext, initRes.contractId)).successful).to.eql(true)
       expect((await c.trigger_caisoTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
+      expect((await c.trigger_terminationNoticeThirtyDays(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
       expect((await c.p_terminateAgreement_terminated_contract(transactionContext, initRes.contractId)).successful).to.eql(true)
       const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
       expect(state.state).to.eql("UnsuccessfulTermination")
@@ -297,12 +299,12 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
     })
   })
 
-  describe('Scenario3: terminate by derpTerminationNoticeIssued.', () => {
-    it('should activate terminateAgreementBySupplier if derpTerminationNoticeIssued happens.', async () => {
+  describe('Scenario 3: terminate by derpTerminationNoticeIssued.', () => {
+    it('should activate terminateAgreementBySupplier if derpTerminationNoticeIssued and terminationNoticeNinetyDays happens.', async () => {
       const c = new HFContract()
       const initRes = await c.init(transactionContext, parameters)
-      const res = await c.trigger_derpTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))
-      expect(res.successful).to.eql(true)
+      expect((await c.trigger_derpTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
+      expect((await c.trigger_terminationNoticeNinetyDays(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)      
       const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())
       expect(state.derpTerminationNoticeIssued._triggered).to.eql(true)
       expect(state.powers.terminateAgreementBySupplier.state).to.eql("Active")
@@ -312,8 +314,8 @@ describe('TransactiveEnergyAgreement chain code tests', () => {
     it('should terminate contract if terminateAgreementBySupplier is exerted.', async () => {
       const c = new HFContract()
       const initRes = await c.init(transactionContext, parameters)
-      const res = await c.trigger_derpTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))
-      expect(res.successful).to.eql(true)
+      expect((await c.trigger_derpTerminationNoticeIssued(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)
+      expect((await c.trigger_terminationNoticeNinetyDays(transactionContext, JSON.stringify({ contractId: initRes.contractId}))).successful).to.eql(true)   
       const res2 = await c.p_terminateAgreementBySupplier_terminated_contract(transactionContext, initRes.contractId)
       expect(res2.successful).to.eql(true)
       const state = JSON.parse((await chaincodeStub.getState(initRes.contractId)).toString())

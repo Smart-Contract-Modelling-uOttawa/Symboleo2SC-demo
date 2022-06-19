@@ -248,6 +248,66 @@ class HFContract extends Contract {
     }
   }
   
+  async expirePower_suspendDelivery(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.suspendDelivery != null && contract.powers.suspendDelivery.expired()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async expirePower_resumeDelivery(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.resumeDelivery != null && contract.powers.resumeDelivery.expired()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async expirePower_terminateContract(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.terminateContract != null && contract.powers.terminateContract.expired()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
   
   async getState(ctx, contractId) {
   	const contractState = await ctx.stub.getState(contractId)

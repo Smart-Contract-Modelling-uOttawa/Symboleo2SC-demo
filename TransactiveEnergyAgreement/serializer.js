@@ -23,7 +23,7 @@ function deserialize(data) {
     }
   }
 
-  for (const key of ['bidAccepted','energySupplied','caisoTerminationNoticeIssued','derpTerminationNoticeIssued','creditInvoiceIssued','isoPaid','penaltyInvoiceIssued','paidPenalty']) {
+  for (const key of ['bidAccepted','energySupplied','caisoTerminationNoticeIssued','terminationNoticeThirtyDays','derpTerminationNoticeIssued','terminationNoticeNinetyDays','creditInvoiceIssued','isoPaid','penaltyInvoiceIssued','paidPenalty']) {
     for(const eKey of Object.keys(object[key])) {
       contract[key][eKey] = object[key][eKey]
     }

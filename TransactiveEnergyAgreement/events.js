@@ -6,28 +6,14 @@ const { Utils } = require("symboleo-js-core")
 const { Str } = require("symboleo-js-core")
 
 const EventListeners = {
-  createObligation_supplyEnergy(contract) { 
-    if (Predicates.happens(contract.bidAccepted)) {
-      if (contract.obligations.supplyEnergy == null || contract.obligations.supplyEnergy.isFinished()) {
-        contract.obligations.supplyEnergy = new Obligation('supplyEnergy', contract.caiso, contract.derp, contract)
-        if (true) {
-          contract.obligations.supplyEnergy.trigerredUnconditional()
-          if (Predicates.happens(contract.energySupplied)&&contract.energySupplied.dispatchStartTime<=contract.bidAccepted.bid.dispatchStartTime&&contract.energySupplied.dispatchEndTime<=contract.bidAccepted.bid.dispatchEndTime&&contract.energySupplied.voltage>=contract.bidAccepted.bid.instruction.minVoltage&&contract.energySupplied.voltage<=contract.bidAccepted.bid.instruction.maxVoltage) {
-            contract.obligations.supplyEnergy.fulfilled()
-          }
-        } else {
-          contract.obligations.supplyEnergy.trigerredConditional()
-        }
-      }
-    }
-  },
   createObligation_payPenalty(contract) { 
     if (Predicates.happens(contract.powers.imposePenalty && contract.powers.imposePenalty._events.Exerted)) {
       if (contract.obligations.payPenalty == null || contract.obligations.payPenalty.isFinished()) {
+        const isNewInstance =  contract.obligations.payPenalty != null && contract.obligations.payPenalty.isFinished()
         contract.obligations.payPenalty = new Obligation('payPenalty', contract.caiso, contract.derp, contract)
         if (true) {
           contract.obligations.payPenalty.trigerredUnconditional()
-          if (Predicates.happens(contract.penaltyInvoiceIssued)&&Predicates.strongHappensBefore(contract.paidPenalty, Utils.addTime(contract.penaltyInvoiceIssued._timestamp, 4, "days"))) {
+          if (!isNewInstance && Predicates.happens(contract.penaltyInvoiceIssued)&&Predicates.strongHappensBefore(contract.paidPenalty, Utils.addTime(contract.penaltyInvoiceIssued._timestamp, 4, "days"))) {
             contract.obligations.payPenalty.fulfilled()
           }
         } else {
@@ -39,10 +25,11 @@ const EventListeners = {
   createObligation_paybyISO(contract) { 
     if (Predicates.happens(contract.obligations.supplyEnergy && contract.obligations.supplyEnergy._events.Fulfilled)) {
       if (contract.obligations.paybyISO == null || contract.obligations.paybyISO.isFinished()) {
+        const isNewInstance =  contract.obligations.paybyISO != null && contract.obligations.paybyISO.isFinished()
         contract.obligations.paybyISO = new Obligation('paybyISO', contract.derp, contract.caiso, contract)
         if (true) {
           contract.obligations.paybyISO.trigerredUnconditional()
-          if (Predicates.happens(contract.creditInvoiceIssued)&&Predicates.happensWithin(contract.isoPaid, contract.creditInvoiceIssued._timestamp, Utils.addTime(contract.creditInvoiceIssued._timestamp, 4, "days"))) {
+          if (!isNewInstance && Predicates.happens(contract.creditInvoiceIssued)&&Predicates.happensWithin(contract.isoPaid, contract.creditInvoiceIssued._timestamp, Utils.addTime(contract.creditInvoiceIssued._timestamp, 4, "days"))) {
             contract.obligations.paybyISO.fulfilled()
           }
         } else {
@@ -51,14 +38,31 @@ const EventListeners = {
       }
     }
   },
+  createObligation_supplyEnergy(contract) { 
+    if (Predicates.happens(contract.bidAccepted)) {
+      if (contract.obligations.supplyEnergy == null || contract.obligations.supplyEnergy.isFinished()) {
+        const isNewInstance =  contract.obligations.supplyEnergy != null && contract.obligations.supplyEnergy.isFinished()
+        contract.obligations.supplyEnergy = new Obligation('supplyEnergy', contract.caiso, contract.derp, contract)
+        if (true) {
+          contract.obligations.supplyEnergy.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.energySupplied)&&contract.energySupplied.dispatchStartTime<=contract.bidAccepted.bid.dispatchStartTime&&contract.energySupplied.dispatchEndTime<=contract.bidAccepted.bid.dispatchEndTime&&contract.energySupplied.voltage>=contract.bidAccepted.bid.instruction.minVoltage&&contract.energySupplied.voltage<=contract.bidAccepted.bid.instruction.maxVoltage) {
+            contract.obligations.supplyEnergy.fulfilled()
+          }
+        } else {
+          contract.obligations.supplyEnergy.trigerredConditional()
+        }
+      }
+    }
+  },
   createPower_terminateAgreement(contract) {
     const effects = { powerCreated: false } 
     if (Predicates.happens(contract.obligations.payPenalty && contract.obligations.payPenalty._events.Violated)) {
       if (contract.powers.terminateAgreement == null || contract.powers.terminateAgreement.isFinished()){
+        const isNewInstance =  contract.powers.terminateAgreement != null && contract.powers.terminateAgreement.isFinished()
         contract.powers.terminateAgreement = new Power('terminateAgreement', contract.caiso, contract.derp, contract)
         effects.powerCreated = true
         effects.powerName = 'terminateAgreement'
-        if (Predicates.happens(contract.caisoTerminationNoticeIssued)) {
+        if (!isNewInstance &&Predicates.happens(contract.caisoTerminationNoticeIssued)&&Predicates.happens(contract.terminationNoticeThirtyDays)) {
           contract.powers.terminateAgreement.trigerredUnconditional()
         } else {
           contract.powers.terminateAgreement.trigerredConditional()
@@ -71,6 +75,7 @@ const EventListeners = {
     const effects = { powerCreated: false } 
     if (Predicates.happens(contract.obligations.supplyEnergy && contract.obligations.supplyEnergy._events.Violated)) {
       if (contract.powers.imposePenalty == null || contract.powers.imposePenalty.isFinished()){
+        const isNewInstance =  contract.powers.imposePenalty != null && contract.powers.imposePenalty.isFinished()
         contract.powers.imposePenalty = new Power('imposePenalty', contract.caiso, contract.derp, contract)
         effects.powerCreated = true
         effects.powerName = 'imposePenalty'
@@ -83,19 +88,14 @@ const EventListeners = {
     }
     return effects
   },
-  activatePower_terminateAgreement(contract) { 
-    if (contract.powers.terminateAgreement != null && (Predicates.happens(contract.caisoTerminationNoticeIssued))) {
-      contract.powers.terminateAgreement.activated()
-    }
-  },
   activatePower_terminateAgreementBySupplier(contract) { 
-    if (contract.powers.terminateAgreementBySupplier != null && (Predicates.happens(contract.derpTerminationNoticeIssued))) {
+    if (contract.powers.terminateAgreementBySupplier != null && (Predicates.happens(contract.derpTerminationNoticeIssued)&&Predicates.happens(contract.terminationNoticeNinetyDays))) {
       contract.powers.terminateAgreementBySupplier.activated()
     }
   },
-  fulfillObligation_supplyEnergy(contract) { 
-    if (contract.obligations.supplyEnergy != null && (Predicates.happens(contract.energySupplied)&&contract.energySupplied.dispatchStartTime<=contract.bidAccepted.bid.dispatchStartTime&&contract.energySupplied.dispatchEndTime<=contract.bidAccepted.bid.dispatchEndTime&&contract.energySupplied.voltage>=contract.bidAccepted.bid.instruction.minVoltage&&contract.energySupplied.voltage<=contract.bidAccepted.bid.instruction.maxVoltage)) {
-      contract.obligations.supplyEnergy.fulfilled()
+  activatePower_terminateAgreement(contract) { 
+    if (contract.powers.terminateAgreement != null && (Predicates.happens(contract.caisoTerminationNoticeIssued)&&Predicates.happens(contract.terminationNoticeThirtyDays))) {
+      contract.powers.terminateAgreement.activated()
     }
   },
   fulfillObligation_payPenalty(contract) { 
@@ -106,6 +106,11 @@ const EventListeners = {
   fulfillObligation_paybyISO(contract) { 
     if (contract.obligations.paybyISO != null && (Predicates.happens(contract.creditInvoiceIssued)&&Predicates.happensWithin(contract.isoPaid, contract.creditInvoiceIssued._timestamp, Utils.addTime(contract.creditInvoiceIssued._timestamp, 4, "days")))) {
       contract.obligations.paybyISO.fulfilled()
+    }
+  },
+  fulfillObligation_supplyEnergy(contract) { 
+    if (contract.obligations.supplyEnergy != null && (Predicates.happens(contract.energySupplied)&&contract.energySupplied.dispatchStartTime<=contract.bidAccepted.bid.dispatchStartTime&&contract.energySupplied.dispatchEndTime<=contract.bidAccepted.bid.dispatchEndTime&&contract.energySupplied.voltage>=contract.bidAccepted.bid.instruction.minVoltage&&contract.energySupplied.voltage<=contract.bidAccepted.bid.instruction.maxVoltage)) {
+      contract.obligations.supplyEnergy.fulfilled()
     }
   },
   successfullyTerminateContract(contract) {
@@ -136,16 +141,16 @@ const EventListeners = {
 
 function getEventMap(contract) {
   return [
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.bidAccepted), ], EventListeners.createObligation_supplyEnergy],
     [[new InternalEvent(InternalEventSource.power, InternalEventType.power.Exerted, contract.powers.imposePenalty), ], EventListeners.createObligation_payPenalty],
     [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Fulfilled, contract.obligations.supplyEnergy), ], EventListeners.createObligation_paybyISO],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.bidAccepted), ], EventListeners.createObligation_supplyEnergy],
     [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.payPenalty), ], EventListeners.createPower_terminateAgreement],
     [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.supplyEnergy), ], EventListeners.createPower_imposePenalty],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.caisoTerminationNoticeIssued), ], EventListeners.activatePower_terminateAgreement],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.derpTerminationNoticeIssued), ], EventListeners.activatePower_terminateAgreementBySupplier],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.energySupplied), ], EventListeners.fulfillObligation_supplyEnergy],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.derpTerminationNoticeIssued), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.terminationNoticeNinetyDays), ], EventListeners.activatePower_terminateAgreementBySupplier],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.caisoTerminationNoticeIssued), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.terminationNoticeThirtyDays), ], EventListeners.activatePower_terminateAgreement],
     [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.penaltyInvoiceIssued), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidPenalty), ], EventListeners.fulfillObligation_payPenalty],
     [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.creditInvoiceIssued), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.isoPaid), ], EventListeners.fulfillObligation_paybyISO],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.energySupplied), ], EventListeners.fulfillObligation_supplyEnergy],
   ]
 }
 

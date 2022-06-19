@@ -1,0 +1,33 @@
+{
+  "name": "dataprocessingagreement",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "engines": {
+    "node": ">=14",
+    "npm": ">=5"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "nyc mocha --recursive",
+    "start": "fabric-chaincode-node start"
+  },
+  "engineStrict": true,
+  "author": "Symboleo2SC",
+  "dependencies": {
+    "fabric-contract-api": "^2.2.2",
+    "fabric-shim": "^2.2.2",
+    "symboleo-js-core": "^1.0.12"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "eslint": "^8.7.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.25.4",
+    "mocha": "^8.0.1",
+    "nyc": "^14.1.1",
+    "sinon": "^6.0.0",
+    "sinon-chai": "^3.2.0"
+  }
+}

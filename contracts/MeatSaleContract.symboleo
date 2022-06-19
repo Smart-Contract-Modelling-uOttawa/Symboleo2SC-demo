@@ -19,7 +19,7 @@ Contract MeatSale (buyer : Buyer, seller : Seller, qnt : Number, qlt : MeatQuali
 Declarations
   goods: Meat with quantity := qnt, quality := qlt;
   delivered: Delivered with item := goods, deliveryAddress := delAdd, delDueDate := Date.add(effDate, delDueDateDays, days);
-  paidLate: PaidLate with amount := (1 + interestRate / Math.abs(3)), currency := curr, from := buyer, to := seller;
+  paidLate: PaidLate with amount := (1 + interestRate / 100) * amt, currency := curr, from := buyer, to := seller;
   paid: Paid with amount := amt, currency := curr, from := buyer, to := seller, payDueDate := payDueDate;
   disclosed: Disclosed;
 

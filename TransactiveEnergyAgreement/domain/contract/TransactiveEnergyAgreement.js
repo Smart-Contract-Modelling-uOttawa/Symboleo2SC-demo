@@ -30,7 +30,9 @@ class TransactiveEnergyAgreement extends SymboleoContract {
     this.bidAccepted = new BidAccepted("bidAccepted")
     this.energySupplied = new EnergySupplied("energySupplied")
     this.caisoTerminationNoticeIssued = new NoticeIssued("caisoTerminationNoticeIssued")
+    this.terminationNoticeThirtyDays = new NoticeIssued("terminationNoticeThirtyDays")
     this.derpTerminationNoticeIssued = new NoticeIssued("derpTerminationNoticeIssued")
+    this.terminationNoticeNinetyDays = new NoticeIssued("terminationNoticeNinetyDays")
     this.creditInvoiceIssued = new InvoiceIssued("creditInvoiceIssued")
     this.isoPaid = new Paid("isoPaid")
     this.isoPaid.from = this.caiso
