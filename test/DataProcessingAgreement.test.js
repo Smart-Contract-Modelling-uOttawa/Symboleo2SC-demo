@@ -330,6 +330,7 @@ describe('DataProcessingAgreement chain code tests', () => {
       const initRes = await c.init(transactionContext, parameters)
       expect((await c.trigger_requestedDataProcessing(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: requestedDataProcessingEvent}))).successful).to.eql(true)
       expect((await c.trigger_processedData(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: processedDataEvent}))).successful).to.eql(true)      
+      expect((await c.trigger_recoProcessedData(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: processedDataEvent}))).successful).to.eql(true)      
       expect((await c.trigger_requestedPayment(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: requestedPaymentEvent}))).successful).to.eql(true)
       expect((await c.trigger_paidServiceProvider(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: paidServiceProviderEvent}))).successful).to.eql(true)
       expect((await c.trigger_clientAgreedTermination(transactionContext, JSON.stringify({ contractId: initRes.contractId, event: {}}))).successful).to.eql(true)
