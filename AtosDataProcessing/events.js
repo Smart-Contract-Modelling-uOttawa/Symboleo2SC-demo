@@ -4,148 +4,181 @@ const { Power } = require("symboleo-js-core")
 const { Predicates } = require("symboleo-js-core")
 const { Utils } = require("symboleo-js-core")
 const { Str } = require("symboleo-js-core")
-const { OriginDataType } = require("./domain/types/OriginDataType.js")
-const { RegionData } = require("./domain/types/RegionData.js")
-const { CatSubjects } = require("./domain/types/CatSubjects.js")
-const { CateProcessingAct } = require("./domain/types/CateProcessingAct.js")
-const { DataType } = require("./domain/types/DataType.js")
+const { Origin } = require("./domain/types/Origin.js")
+const { Region } = require("./domain/types/Region.js")
+const { CategorySubjects } = require("./domain/types/CategorySubjects.js")
+const { ProcessingActitvity } = require("./domain/types/ProcessingActitvity.js")
 
 const EventListeners = {
-  createObligation_opaid(contract) { 
-    if (Predicates.happens(contract.processedData)) {
-      if (contract.obligations.opaid == null || contract.obligations.opaid.isFinished()) {
-        contract.obligations.opaid = new Obligation('opaid', contract.atos, contract.client, contract)
-        if (true) {
-          contract.obligations.opaid.trigerredUnconditional()
-          if (Predicates.happens(contract.paid)) {
-            contract.obligations.opaid.fulfilled()
+  createObligation_processData(contract) { 
+    if (Predicates.happens(contract.requestedDataProcessing) ) { 
+      if (contract.obligations.processData == null || contract.obligations.processData.isFinished()) {
+        const isNewInstance =  contract.obligations.processData != null && contract.obligations.processData.isFinished()
+        contract.obligations.processData = new Obligation('processData', contract.client, contract.atos, contract)
+        if (true ) { 
+          contract.obligations.processData.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.processedData)  && ((Predicates.happens(contract.adaptedInstruction)  && contract.processedData.instruction.origin === contract.adaptedInstruction.instruction.origin && contract.processedData.instruction.region === contract.adaptedInstruction.instruction.region && contract.processedData.instruction.categorySubjects === contract.adaptedInstruction.instruction.categorySubjects && contract.processedData.instruction.processingActitvity === contract.adaptedInstruction.instruction.processingActitvity && contract.processedData.dataId === contract.requestedDataProcessing.dataPoint.id) || (contract.processedData.instruction.origin === contract.instruction.origin && contract.processedData.instruction.region === contract.instruction.region && contract.processedData.instruction.categorySubjects === contract.instruction.categorySubjects && contract.processedData.instruction.processingActitvity === contract.instruction.processingActitvity && contract.processedData.dataId === contract.requestedDataProcessing.dataPoint.id))) { 
+            contract.obligations.processData.fulfilled()
           }
         } else {
-          contract.obligations.opaid.trigerredConditional()
+          contract.obligations.processData.trigerredConditional()
         }
       }
     }
   },
-  createObligation_odelRecord(contract) { 
-    if (Predicates.happens(contract.requestedRecord)) {
-      if (contract.obligations.odelRecord == null || contract.obligations.odelRecord.isFinished()) {
-        contract.obligations.odelRecord = new Obligation('odelRecord', contract.client, contract.atos, contract)
-        if (contract.requestedRecord.id===contract.dataPointId) {
-          contract.obligations.odelRecord.trigerredUnconditional()
-          if (Predicates.happens(contract.deliveredRecord)&&(contract.requestedRecord.id===contract.deliveredRecord.id)) {
-            contract.obligations.odelRecord.fulfilled()
+  createObligation_adaptInstruction(contract) { 
+    if (Predicates.happens(contract.infringementNotified) ) { 
+      if (contract.obligations.adaptInstruction == null || contract.obligations.adaptInstruction.isFinished()) {
+        const isNewInstance =  contract.obligations.adaptInstruction != null && contract.obligations.adaptInstruction.isFinished()
+        contract.obligations.adaptInstruction = new Obligation('adaptInstruction', contract.atos, contract.client, contract)
+        if (true ) { 
+          contract.obligations.adaptInstruction.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.adaptedInstruction) ) { 
+            contract.obligations.adaptInstruction.fulfilled()
           }
         } else {
-          contract.obligations.odelRecord.trigerredConditional()
+          contract.obligations.adaptInstruction.trigerredConditional()
         }
       }
     }
   },
-  createObligation_orecordData(contract) { 
-    if (Predicates.happens(contract.processedData)) {
-      if (contract.obligations.orecordData == null || contract.obligations.orecordData.isFinished()) {
-        contract.obligations.orecordData = new Obligation('orecordData', contract.client, contract.atos, contract)
-        if (true) {
-          contract.obligations.orecordData.trigerredUnconditional()
-          if (Predicates.happens(contract.recoProcessedData)&&contract.processedData.id===contract.recoProcessedData.id&&contract.processedData.id===contract.dataPointId) {
-            contract.obligations.orecordData.fulfilled()
+  createObligation_recordData(contract) { 
+    if (Predicates.happens(contract.processedData) ) { 
+      if (contract.obligations.recordData == null || contract.obligations.recordData.isFinished()) {
+        const isNewInstance =  contract.obligations.recordData != null && contract.obligations.recordData.isFinished()
+        contract.obligations.recordData = new Obligation('recordData', contract.client, contract.atos, contract)
+        if (true ) { 
+          contract.obligations.recordData.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.recoProcessedData)  && contract.processedData.dataId === contract.recoProcessedData.dataId) { 
+            contract.obligations.recordData.fulfilled()
           }
         } else {
-          contract.obligations.orecordData.trigerredConditional()
+          contract.obligations.recordData.trigerredConditional()
         }
       }
     }
   },
-  createObligation_oadaptInst(contract) { 
-    if (Predicates.happens(contract.infringNotified)) {
-      if (contract.obligations.oadaptInst == null || contract.obligations.oadaptInst.isFinished()) {
-        contract.obligations.oadaptInst = new Obligation('oadaptInst', contract.atos, contract.client, contract)
-        if (true) {
-          contract.obligations.oadaptInst.trigerredUnconditional()
-          if (Predicates.happens(contract.adaptedInst)) {
-            contract.obligations.oadaptInst.fulfilled()
+  createObligation_payment(contract) { 
+    if (Predicates.happens(contract.requestedPayment) ) { 
+      if (contract.obligations.payment == null || contract.obligations.payment.isFinished()) {
+        const isNewInstance =  contract.obligations.payment != null && contract.obligations.payment.isFinished()
+        contract.obligations.payment = new Obligation('payment', contract.atos, contract.client, contract)
+        if (true ) { 
+          contract.obligations.payment.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.paidServiceProvider)  && contract.requestedPayment.amount === contract.paidServiceProvider.amount) { 
+            contract.obligations.payment.fulfilled()
           }
         } else {
-          contract.obligations.oadaptInst.trigerredConditional()
+          contract.obligations.payment.trigerredConditional()
         }
       }
     }
   },
-  createObligation_oproccDataInst(contract) { 
-    if (Predicates.happens(contract.processedData)) {
-      if (contract.obligations.oproccDataInst == null || contract.obligations.oproccDataInst.isFinished()) {
-        contract.obligations.oproccDataInst = new Obligation('oproccDataInst', contract.atos, contract.client, contract)
-        if (true) {
-          contract.obligations.oproccDataInst.trigerredUnconditional()
-          if (((contract.processedData.instruction.originData===contract.inst.originData)&&(contract.processedData.instruction.regionData===contract.inst.regionData)&&(contract.processedData.instruction.categoriesDataSubjects===contract.inst.categoriesDataSubjects)&&(contract.processedData.instruction.categoriesProcessingActivity===contract.inst.categoriesProcessingActivity)&&contract.dataPointId===contract.processedData.id)) {
-            contract.obligations.oproccDataInst.fulfilled()
+  createObligation_deliverProcessingRecord(contract) { 
+    if (Predicates.happens(contract.requestedRecordOfProcessing) ) { 
+      if (contract.obligations.deliverProcessingRecord == null || contract.obligations.deliverProcessingRecord.isFinished()) {
+        const isNewInstance =  contract.obligations.deliverProcessingRecord != null && contract.obligations.deliverProcessingRecord.isFinished()
+        contract.obligations.deliverProcessingRecord = new Obligation('deliverProcessingRecord', contract.client, contract.atos, contract)
+        if (true ) { 
+          contract.obligations.deliverProcessingRecord.trigerredUnconditional()
+          if (!isNewInstance && Predicates.happens(contract.deliveredRecordOfProcessing)  && (contract.requestedRecordOfProcessing.dataId === contract.deliveredRecordOfProcessing.dataId)) { 
+            contract.obligations.deliverProcessingRecord.fulfilled()
           }
         } else {
-          contract.obligations.oproccDataInst.trigerredConditional()
+          contract.obligations.deliverProcessingRecord.trigerredConditional()
         }
       }
     }
   },
-  createPower_psuspendPerformance(contract) {
+  createPower_suspendService(contract) {
     const effects = { powerCreated: false } 
-    if (Predicates.happens(contract.obligations.oadaptInst && contract.obligations.oadaptInst._events.Violated)) {
-      if (contract.powers.psuspendPerformance == null || contract.powers.psuspendPerformance.isFinished()){
-        contract.powers.psuspendPerformance = new Power('psuspendPerformance', contract.atos, contract.client, contract)
+    if (Predicates.happens(contract.obligations.adaptInstruction && contract.obligations.adaptInstruction._events.Violated) ) { 
+      if (contract.powers.suspendService == null || contract.powers.suspendService.isFinished()){
+        const isNewInstance =  contract.powers.suspendService != null && contract.powers.suspendService.isFinished()
+        contract.powers.suspendService = new Power('suspendService', contract.atos, contract.client, contract)
         effects.powerCreated = true
-        effects.powerName = 'psuspendPerformance'
-        if (Predicates.happens(contract.suspendNoticed)) {
-          contract.powers.psuspendPerformance.trigerredUnconditional()
+        effects.powerName = 'suspendService'
+        if (!isNewInstance && Predicates.happens(contract.suspensionNotified)  ) { 
+          contract.powers.suspendService.trigerredUnconditional()
         } else {
-          contract.powers.psuspendPerformance.trigerredConditional()
+          contract.powers.suspendService.trigerredConditional()
         }
       }
     }
     return effects
   },
-  createPower_presumPerformance(contract) {
+  createPower_suspendActiveRequest(contract) {
     const effects = { powerCreated: false } 
-    if (Predicates.happens(contract.modifiedInst)) {
-      if (contract.powers.presumPerformance == null || contract.powers.presumPerformance.isFinished()){
-        contract.powers.presumPerformance = new Power('presumPerformance', contract.client, contract.atos, contract)
+    if (Predicates.happens(contract.obligations.adaptInstruction && contract.obligations.adaptInstruction._events.Violated) ) { 
+      if (contract.powers.suspendActiveRequest == null || contract.powers.suspendActiveRequest.isFinished()){
+        const isNewInstance =  contract.powers.suspendActiveRequest != null && contract.powers.suspendActiveRequest.isFinished()
+        contract.powers.suspendActiveRequest = new Power('suspendActiveRequest', contract.atos, contract.client, contract)
         effects.powerCreated = true
-        effects.powerName = 'presumPerformance'
-        if (true) {
-          contract.powers.presumPerformance.trigerredUnconditional()
+        effects.powerName = 'suspendActiveRequest'
+        if (!isNewInstance && Predicates.happens(contract.suspensionNotified)  ) { 
+          contract.powers.suspendActiveRequest.trigerredUnconditional()
         } else {
-          contract.powers.presumPerformance.trigerredConditional()
+          contract.powers.suspendActiveRequest.trigerredConditional()
         }
       }
     }
     return effects
   },
-  activatePower_psuspendPerformance(contract) { 
-    if (contract.powers.psuspendPerformance != null && (Predicates.happens(contract.suspendNoticed))) {
-      contract.powers.psuspendPerformance.activated()
+  createPower_resumeService(contract) {
+    const effects = { powerCreated: false } 
+    if (Predicates.happens(contract.adaptedInstruction) ) { 
+      if (contract.powers.resumeService == null || contract.powers.resumeService.isFinished()){
+        const isNewInstance =  contract.powers.resumeService != null && contract.powers.resumeService.isFinished()
+        contract.powers.resumeService = new Power('resumeService', contract.client, contract.atos, contract)
+        effects.powerCreated = true
+        effects.powerName = 'resumeService'
+        if (true ) { 
+          contract.powers.resumeService.trigerredUnconditional()
+        } else {
+          contract.powers.resumeService.trigerredConditional()
+        }
+      }
+    }
+    return effects
+  },
+  activatePower_suspendService(contract) { 
+    if (contract.powers.suspendService != null && (Predicates.happens(contract.suspensionNotified) )) {  
+      contract.powers.suspendService.activated()
     }
   },
-  fulfillObligation_opaid(contract) { 
-    if (contract.obligations.opaid != null && (Predicates.happens(contract.paid))) {
-      contract.obligations.opaid.fulfilled()
+  activatePower_suspendActiveRequest(contract) { 
+    if (contract.powers.suspendActiveRequest != null && (Predicates.happens(contract.suspensionNotified) )) {  
+      contract.powers.suspendActiveRequest.activated()
     }
   },
-  fulfillObligation_odelRecord(contract) { 
-    if (contract.obligations.odelRecord != null && (Predicates.happens(contract.deliveredRecord)&&(contract.requestedRecord.id===contract.deliveredRecord.id))) {
-      contract.obligations.odelRecord.fulfilled()
+  fulfillObligation_processData(contract) { 
+    if (contract.obligations.processData != null && (Predicates.happens(contract.processedData)  && ((Predicates.happens(contract.adaptedInstruction)  && contract.processedData.instruction.origin === contract.adaptedInstruction.instruction.origin && contract.processedData.instruction.region === contract.adaptedInstruction.instruction.region && contract.processedData.instruction.categorySubjects === contract.adaptedInstruction.instruction.categorySubjects && contract.processedData.instruction.processingActitvity === contract.adaptedInstruction.instruction.processingActitvity && contract.processedData.dataId === contract.requestedDataProcessing.dataPoint.id) || (contract.processedData.instruction.origin === contract.instruction.origin && contract.processedData.instruction.region === contract.instruction.region && contract.processedData.instruction.categorySubjects === contract.instruction.categorySubjects && contract.processedData.instruction.processingActitvity === contract.instruction.processingActitvity && contract.processedData.dataId === contract.requestedDataProcessing.dataPoint.id))) ) { 
+      contract.obligations.processData.fulfilled()
     }
   },
-  fulfillObligation_oproccData(contract) { 
-    if (contract.obligations.oproccData != null && (Predicates.happens(contract.processedData))) {
-      contract.obligations.oproccData.fulfilled()
+  fulfillObligation_provideDataProcessingService(contract) { 
+    if (contract.obligations.provideDataProcessingService != null && (Predicates.happens(contract.clientAgreedTermination)  && Predicates.happens(contract.providerAgreedTermination) ) ) { 
+      contract.obligations.provideDataProcessingService.fulfilled()
     }
   },
-  fulfillObligation_orecordData(contract) { 
-    if (contract.obligations.orecordData != null && (Predicates.happens(contract.recoProcessedData)&&contract.processedData.id===contract.recoProcessedData.id&&contract.processedData.id===contract.dataPointId)) {
-      contract.obligations.orecordData.fulfilled()
+  fulfillObligation_adaptInstruction(contract) { 
+    if (contract.obligations.adaptInstruction != null && (Predicates.happens(contract.adaptedInstruction) ) ) { 
+      contract.obligations.adaptInstruction.fulfilled()
     }
   },
-  fulfillObligation_oadaptInst(contract) { 
-    if (contract.obligations.oadaptInst != null && (Predicates.happens(contract.adaptedInst))) {
-      contract.obligations.oadaptInst.fulfilled()
+  fulfillObligation_recordData(contract) { 
+    if (contract.obligations.recordData != null && (Predicates.happens(contract.recoProcessedData)  && contract.processedData.dataId === contract.recoProcessedData.dataId) ) { 
+      contract.obligations.recordData.fulfilled()
+    }
+  },
+  fulfillObligation_payment(contract) { 
+    if (contract.obligations.payment != null && (Predicates.happens(contract.paidServiceProvider)  && contract.requestedPayment.amount === contract.paidServiceProvider.amount) ) { 
+      contract.obligations.payment.fulfilled()
+    }
+  },
+  fulfillObligation_deliverProcessingRecord(contract) { 
+    if (contract.obligations.deliverProcessingRecord != null && (Predicates.happens(contract.deliveredRecordOfProcessing)  && (contract.requestedRecordOfProcessing.dataId === contract.deliveredRecordOfProcessing.dataId)) ) { 
+      contract.obligations.deliverProcessingRecord.fulfilled()
     }
   },
   successfullyTerminateContract(contract) {
@@ -176,19 +209,22 @@ const EventListeners = {
 
 function getEventMap(contract) {
   return [
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), ], EventListeners.createObligation_opaid],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedRecord), ], EventListeners.createObligation_odelRecord],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), ], EventListeners.createObligation_orecordData],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.infringNotified), ], EventListeners.createObligation_oadaptInst],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), ], EventListeners.createObligation_oproccDataInst],
-    [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.oadaptInst), ], EventListeners.createPower_psuspendPerformance],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.modifiedInst), ], EventListeners.createPower_presumPerformance],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.suspendNoticed), ], EventListeners.activatePower_psuspendPerformance],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paid), ], EventListeners.fulfillObligation_opaid],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.deliveredRecord), ], EventListeners.fulfillObligation_odelRecord],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), ], EventListeners.fulfillObligation_oproccData],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.recoProcessedData), ], EventListeners.fulfillObligation_orecordData],
-    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInst), ], EventListeners.fulfillObligation_oadaptInst],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedDataProcessing), ], EventListeners.createObligation_processData],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.infringementNotified), ], EventListeners.createObligation_adaptInstruction],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), ], EventListeners.createObligation_recordData],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedPayment), ], EventListeners.createObligation_payment],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedRecordOfProcessing), ], EventListeners.createObligation_deliverProcessingRecord],
+    [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.adaptInstruction), ], EventListeners.createPower_suspendService],
+    [[new InternalEvent(InternalEventSource.obligation, InternalEventType.obligation.Violated, contract.obligations.adaptInstruction), ], EventListeners.createPower_suspendActiveRequest],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInstruction), ], EventListeners.createPower_resumeService],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.suspensionNotified), ], EventListeners.activatePower_suspendService],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.suspensionNotified), ], EventListeners.activatePower_suspendActiveRequest],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInstruction), ], EventListeners.fulfillObligation_processData],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.clientAgreedTermination), new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.providerAgreedTermination), ], EventListeners.fulfillObligation_provideDataProcessingService],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInstruction), ], EventListeners.fulfillObligation_adaptInstruction],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.recoProcessedData), ], EventListeners.fulfillObligation_recordData],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidServiceProvider), ], EventListeners.fulfillObligation_payment],
+    [[new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.deliveredRecordOfProcessing), ], EventListeners.fulfillObligation_deliverProcessingRecord],
   ]
 }
 

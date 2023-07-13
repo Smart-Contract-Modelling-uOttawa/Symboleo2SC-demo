@@ -1,4 +1,4 @@
-const { AtosDataProcessing } = require("./domain/contract/AtosDataProcessing.js")
+const { DataProcessingAgreement } = require("./domain/contract/DataProcessingAgreement.js")
 const { Obligation, ObligationActiveState, ObligationState } = require("symboleo-js-core")
 const { InternalEventType, InternalEvent, InternalEventSource} = require("symboleo-js-core")
 const { Event } = require("symboleo-js-core")
@@ -9,8 +9,7 @@ const { EventListeners, getEventMap } = require("./events.js")
 
 function deserialize(data) {
   const object = JSON.parse(data)
-  const contract = new AtosDataProcessing(object.atos,object.client,object.inst,object.dType,object.dataPointId)
-  
+  const contract = new DataProcessingAgreement(object.atos, object.client, object.instruction)
   contract.state = object.state
   contract.activeState = object.activeState
   
@@ -23,137 +22,151 @@ function deserialize(data) {
     }
   }
 
-  for (const key of ['processedData','adaptedInst','infringNotified','suspendNoticed','modifiedInst','recoProcessedData','paid','deliveredRecord','requestedRecord']) {
+  for (const key of ['requestedDataProcessing', 'processedData', 'recoProcessedData', 'requestedRecordOfProcessing', 'deliveredRecordOfProcessing', 'adaptedInstruction', 'infringementNotified', 'suspensionNotified', 'clientAgreedTermination', 'providerAgreedTermination', 'paidServiceProvider', 'requestedPayment']) {
     for(const eKey of Object.keys(object[key])) {
       contract[key][eKey] = object[key][eKey]
     }
   }
 
-  if (object.obligations.oproccDataInst != null) {
-    const obligation = new Obligation('oproccDataInst', contract.atos, contract.client, contract)
-    obligation.state = object.obligations.oproccDataInst.state
-    obligation.activeState = object.obligations.oproccDataInst.activeState
-    obligation._createdPowerNames = object.obligations.oproccDataInst._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.oproccDataInst._suspendedByContractSuspension
+  if (object.obligations.payment != null) {
+    const obligation = new Obligation('payment', contract.atos, contract.client, contract)
+    obligation.state = object.obligations.payment.state
+    obligation.activeState = object.obligations.payment.activeState
+    obligation._createdPowerNames = object.obligations.payment._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.payment._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.oproccDataInst._events[eventType] != null) {
+      if (object.obligations.payment._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.oproccDataInst._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.oproccDataInst._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.payment._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.payment._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.oproccDataInst = obligation
+    contract.obligations.payment = obligation
   }
-  if (object.obligations.oadaptInst != null) {
-    const obligation = new Obligation('oadaptInst', contract.atos, contract.client, contract)
-    obligation.state = object.obligations.oadaptInst.state
-    obligation.activeState = object.obligations.oadaptInst.activeState
-    obligation._createdPowerNames = object.obligations.oadaptInst._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.oadaptInst._suspendedByContractSuspension
+  if (object.obligations.processData != null) {
+    const obligation = new Obligation('processData', contract.client, contract.atos, contract)
+    obligation.state = object.obligations.processData.state
+    obligation.activeState = object.obligations.processData.activeState
+    obligation._createdPowerNames = object.obligations.processData._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.processData._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.oadaptInst._events[eventType] != null) {
+      if (object.obligations.processData._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.oadaptInst._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.oadaptInst._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.processData._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.processData._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.oadaptInst = obligation
+    contract.obligations.processData = obligation
   }
-  if (object.obligations.orecordData != null) {
-    const obligation = new Obligation('orecordData', contract.client, contract.atos, contract)
-    obligation.state = object.obligations.orecordData.state
-    obligation.activeState = object.obligations.orecordData.activeState
-    obligation._createdPowerNames = object.obligations.orecordData._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.orecordData._suspendedByContractSuspension
+  if (object.obligations.adaptInstruction != null) {
+    const obligation = new Obligation('adaptInstruction', contract.atos, contract.client, contract)
+    obligation.state = object.obligations.adaptInstruction.state
+    obligation.activeState = object.obligations.adaptInstruction.activeState
+    obligation._createdPowerNames = object.obligations.adaptInstruction._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.adaptInstruction._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.orecordData._events[eventType] != null) {
+      if (object.obligations.adaptInstruction._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.orecordData._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.orecordData._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.adaptInstruction._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.adaptInstruction._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.orecordData = obligation
+    contract.obligations.adaptInstruction = obligation
   }
-  if (object.obligations.opaid != null) {
-    const obligation = new Obligation('opaid', contract.atos, contract.client, contract)
-    obligation.state = object.obligations.opaid.state
-    obligation.activeState = object.obligations.opaid.activeState
-    obligation._createdPowerNames = object.obligations.opaid._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.opaid._suspendedByContractSuspension
+  if (object.obligations.recordData != null) {
+    const obligation = new Obligation('recordData', contract.client, contract.atos, contract)
+    obligation.state = object.obligations.recordData.state
+    obligation.activeState = object.obligations.recordData.activeState
+    obligation._createdPowerNames = object.obligations.recordData._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.recordData._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.opaid._events[eventType] != null) {
+      if (object.obligations.recordData._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.opaid._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.opaid._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.recordData._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.recordData._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.opaid = obligation
+    contract.obligations.recordData = obligation
   }
-  if (object.obligations.odelRecord != null) {
-    const obligation = new Obligation('odelRecord', contract.client, contract.atos, contract)
-    obligation.state = object.obligations.odelRecord.state
-    obligation.activeState = object.obligations.odelRecord.activeState
-    obligation._createdPowerNames = object.obligations.odelRecord._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.odelRecord._suspendedByContractSuspension
+  if (object.obligations.deliverProcessingRecord != null) {
+    const obligation = new Obligation('deliverProcessingRecord', contract.client, contract.atos, contract)
+    obligation.state = object.obligations.deliverProcessingRecord.state
+    obligation.activeState = object.obligations.deliverProcessingRecord.activeState
+    obligation._createdPowerNames = object.obligations.deliverProcessingRecord._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.deliverProcessingRecord._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.odelRecord._events[eventType] != null) {
+      if (object.obligations.deliverProcessingRecord._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.odelRecord._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.odelRecord._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.deliverProcessingRecord._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.deliverProcessingRecord._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.odelRecord = obligation
+    contract.obligations.deliverProcessingRecord = obligation
   }
-  if (object.obligations.oproccData != null) {
-    const obligation = new Obligation('oproccData', contract.client, contract.atos, contract)
-    obligation.state = object.obligations.oproccData.state
-    obligation.activeState = object.obligations.oproccData.activeState
-    obligation._createdPowerNames = object.obligations.oproccData._createdPowerNames
-    obligation._suspendedByContractSuspension = object.obligations.oproccData._suspendedByContractSuspension
+  if (object.obligations.provideDataProcessingService != null) {
+    const obligation = new Obligation('provideDataProcessingService', contract.client, contract.atos, contract)
+    obligation.state = object.obligations.provideDataProcessingService.state
+    obligation.activeState = object.obligations.provideDataProcessingService.activeState
+    obligation._createdPowerNames = object.obligations.provideDataProcessingService._createdPowerNames
+    obligation._suspendedByContractSuspension = object.obligations.provideDataProcessingService._suspendedByContractSuspension
     for (const eventType of Object.keys(InternalEventType.obligation)) {
-      if (object.obligations.oproccData._events[eventType] != null) {
+      if (object.obligations.provideDataProcessingService._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.obligations.oproccData._events[eventType]._triggered
-        eventObject._timestamp = object.obligations.oproccData._events[eventType]._timestamp
+        eventObject._triggered = object.obligations.provideDataProcessingService._events[eventType]._triggered
+        eventObject._timestamp = object.obligations.provideDataProcessingService._events[eventType]._timestamp
         obligation._events[eventType] = eventObject
       }
     }
-    contract.obligations.oproccData = obligation
+    contract.obligations.provideDataProcessingService = obligation
   }
 
   
-  if (object.powers.psuspendPerformance != null) {
-    const power = new Power('psuspendPerformance', contract.atos, contract.atos, contract)
-    power.state = object.powers.psuspendPerformance.state
-    power.activeState = object.powers.psuspendPerformance.activeState
+  if (object.powers.suspendService != null) {
+    const power = new Power('suspendService', contract.atos, contract.atos, contract)
+    power.state = object.powers.suspendService.state
+    power.activeState = object.powers.suspendService.activeState
     for (const eventType of Object.keys(InternalEventType.power)) {
-      if (object.powers.psuspendPerformance._events[eventType] != null) {
+      if (object.powers.suspendService._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.powers.psuspendPerformance._events[eventType]._triggered
-        eventObject._timestamp = object.powers.psuspendPerformance._events[eventType]._timestamp
+        eventObject._triggered = object.powers.suspendService._events[eventType]._triggered
+        eventObject._timestamp = object.powers.suspendService._events[eventType]._timestamp
         power._events[eventType] = eventObject
       }
     }
-    contract.powers.psuspendPerformance = power
+    contract.powers.suspendService = power
   }
-  if (object.powers.presumPerformance != null) {
-    const power = new Power('presumPerformance', contract.client, contract.client, contract)
-    power.state = object.powers.presumPerformance.state
-    power.activeState = object.powers.presumPerformance.activeState
+  if (object.powers.suspendActiveRequest != null) {
+    const power = new Power('suspendActiveRequest', contract.atos, contract.atos, contract)
+    power.state = object.powers.suspendActiveRequest.state
+    power.activeState = object.powers.suspendActiveRequest.activeState
     for (const eventType of Object.keys(InternalEventType.power)) {
-      if (object.powers.presumPerformance._events[eventType] != null) {
+      if (object.powers.suspendActiveRequest._events[eventType] != null) {
         const eventObject = new Event()
-        eventObject._triggered = object.powers.presumPerformance._events[eventType]._triggered
-        eventObject._timestamp = object.powers.presumPerformance._events[eventType]._timestamp
+        eventObject._triggered = object.powers.suspendActiveRequest._events[eventType]._triggered
+        eventObject._timestamp = object.powers.suspendActiveRequest._events[eventType]._timestamp
         power._events[eventType] = eventObject
       }
     }
-    contract.powers.presumPerformance = power
+    contract.powers.suspendActiveRequest = power
+  }
+  if (object.powers.resumeService != null) {
+    const power = new Power('resumeService', contract.client, contract.client, contract)
+    power.state = object.powers.resumeService.state
+    power.activeState = object.powers.resumeService.activeState
+    for (const eventType of Object.keys(InternalEventType.power)) {
+      if (object.powers.resumeService._events[eventType] != null) {
+        const eventObject = new Event()
+        eventObject._triggered = object.powers.resumeService._events[eventType]._triggered
+        eventObject._timestamp = object.powers.resumeService._events[eventType]._timestamp
+        power._events[eventType] = eventObject
+      }
+    }
+    contract.powers.resumeService = power
   }
   return contract
 }

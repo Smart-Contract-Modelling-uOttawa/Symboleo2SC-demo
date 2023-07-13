@@ -1,5 +1,5 @@
 const { Contract } = require("fabric-contract-api") 
-const { AtosDataProcessing } = require("./domain/contract/AtosDataProcessing.js")
+const { DataProcessingAgreement } = require("./domain/contract/DataProcessingAgreement.js")
 const { deserialize, serialize } = require("./serializer.js")
 const { Events } = require("symboleo-js-core")
 const { InternalEvent, InternalEventSource, InternalEventType } = require("symboleo-js-core")
@@ -7,7 +7,7 @@ const { getEventMap, EventListeners } = require("./events.js")
 class HFContract extends Contract {
   
   constructor() {
-    super('AtosDataProcessing');
+    super('DataProcessingAgreement');
   }
 
   initialize(contract) {
@@ -16,11 +16,11 @@ class HFContract extends Contract {
 
   async init(ctx, args) {
   	const inputs = JSON.parse(args);
-    const contractInstance = new AtosDataProcessing (inputs.atos,inputs.client,inputs.inst,inputs.dType,inputs.dataPointId)
+    const contractInstance = new DataProcessingAgreement (inputs.atos, inputs.client, inputs.instruction)
     this.initialize(contractInstance)
     if (contractInstance.activated()) {
       // call trigger transitions for legal positions
-      contractInstance.obligations.oproccData.trigerredUnconditional()
+      contractInstance.obligations.provideDataProcessingService.trigerredUnconditional()
   
       await ctx.stub.putState(contractInstance.id, Buffer.from(serialize(contractInstance)))
   
@@ -30,6 +30,26 @@ class HFContract extends Contract {
     }
   }
 
+  async trigger_requestedDataProcessing(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.requestedDataProcessing.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedDataProcessing))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
   async trigger_processedData(ctx, args) {
   	const inputs = JSON.parse(args);
   	const contractId = inputs.contractId;
@@ -40,89 +60,9 @@ class HFContract extends Contract {
     }
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
-    if (contract.isInEffect()) {
+    if (contract.isInEffect()  ){
       contract.processedData.happen(event)
       Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.processedData))
-      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
-      return {successful: true}
-    } else {
-      return {successful: false}
-    }
-  }
-  
-  async trigger_adaptedInst(ctx, args) {
-  	const inputs = JSON.parse(args);
-  	const contractId = inputs.contractId;
-  	const event = inputs.event;
-    const contractState = await ctx.stub.getState(contractId)
-    if (contractState == null) {
-      return {successful: false}
-    }
-    const contract = deserialize(contractState.toString())
-    this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.adaptedInst.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInst))
-      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
-      return {successful: true}
-    } else {
-      return {successful: false}
-    }
-  }
-  
-  async trigger_infringNotified(ctx, args) {
-  	const inputs = JSON.parse(args);
-  	const contractId = inputs.contractId;
-  	const event = inputs.event;
-    const contractState = await ctx.stub.getState(contractId)
-    if (contractState == null) {
-      return {successful: false}
-    }
-    const contract = deserialize(contractState.toString())
-    this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.infringNotified.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.infringNotified))
-      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
-      return {successful: true}
-    } else {
-      return {successful: false}
-    }
-  }
-  
-  async trigger_suspendNoticed(ctx, args) {
-  	const inputs = JSON.parse(args);
-  	const contractId = inputs.contractId;
-  	const event = inputs.event;
-    const contractState = await ctx.stub.getState(contractId)
-    if (contractState == null) {
-      return {successful: false}
-    }
-    const contract = deserialize(contractState.toString())
-    this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.suspendNoticed.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.suspendNoticed))
-      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
-      return {successful: true}
-    } else {
-      return {successful: false}
-    }
-  }
-  
-  async trigger_modifiedInst(ctx, args) {
-  	const inputs = JSON.parse(args);
-  	const contractId = inputs.contractId;
-  	const event = inputs.event;
-    const contractState = await ctx.stub.getState(contractId)
-    if (contractState == null) {
-      return {successful: false}
-    }
-    const contract = deserialize(contractState.toString())
-    this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.modifiedInst.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.modifiedInst))
       await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
       return {successful: true}
     } else {
@@ -140,7 +80,7 @@ class HFContract extends Contract {
     }
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
-    if (contract.isInEffect()) {
+    if (contract.isInEffect()  ){
       contract.recoProcessedData.happen(event)
       Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.recoProcessedData))
       await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
@@ -150,7 +90,7 @@ class HFContract extends Contract {
     }
   }
   
-  async trigger_paid(ctx, args) {
+  async trigger_requestedRecordOfProcessing(ctx, args) {
   	const inputs = JSON.parse(args);
   	const contractId = inputs.contractId;
   	const event = inputs.event;
@@ -160,9 +100,9 @@ class HFContract extends Contract {
     }
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.paid.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paid))
+    if (contract.isInEffect()  ){
+      contract.requestedRecordOfProcessing.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedRecordOfProcessing))
       await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
       return {successful: true}
     } else {
@@ -170,7 +110,7 @@ class HFContract extends Contract {
     }
   }
   
-  async trigger_deliveredRecord(ctx, args) {
+  async trigger_deliveredRecordOfProcessing(ctx, args) {
   	const inputs = JSON.parse(args);
   	const contractId = inputs.contractId;
   	const event = inputs.event;
@@ -180,9 +120,9 @@ class HFContract extends Contract {
     }
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.deliveredRecord.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.deliveredRecord))
+    if (contract.isInEffect()  ){
+      contract.deliveredRecordOfProcessing.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.deliveredRecordOfProcessing))
       await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
       return {successful: true}
     } else {
@@ -190,7 +130,7 @@ class HFContract extends Contract {
     }
   }
   
-  async trigger_requestedRecord(ctx, args) {
+  async trigger_adaptedInstruction(ctx, args) {
   	const inputs = JSON.parse(args);
   	const contractId = inputs.contractId;
   	const event = inputs.event;
@@ -200,9 +140,9 @@ class HFContract extends Contract {
     }
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
-    if (contract.isInEffect()) {
-      contract.requestedRecord.happen(event)
-      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedRecord))
+    if (contract.isInEffect()  ){
+      contract.adaptedInstruction.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.adaptedInstruction))
       await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
       return {successful: true}
     } else {
@@ -210,7 +150,127 @@ class HFContract extends Contract {
     }
   }
   
-  async p_psuspendPerformance_suspended_o_oproccData(ctx, contractId) {
+  async trigger_infringementNotified(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.infringementNotified.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.infringementNotified))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async trigger_suspensionNotified(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.suspensionNotified.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.suspensionNotified))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async trigger_clientAgreedTermination(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.clientAgreedTermination.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.clientAgreedTermination))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async trigger_providerAgreedTermination(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.providerAgreedTermination.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.providerAgreedTermination))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async trigger_paidServiceProvider(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.paidServiceProvider.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.paidServiceProvider))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async trigger_requestedPayment(ctx, args) {
+  	const inputs = JSON.parse(args);
+  	const contractId = inputs.contractId;
+  	const event = inputs.event;
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+    if (contract.isInEffect()  ){
+      contract.requestedPayment.happen(event)
+      Events.emitEvent(contract, new InternalEvent(InternalEventSource.contractEvent, InternalEventType.contractEvent.Happened, contract.requestedPayment))
+      await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+      return {successful: true}
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async p_suspendService_suspended_o_provideDataProcessingService(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -218,9 +278,9 @@ class HFContract extends Contract {
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
   
-    if (contract.isInEffect() && contract.powers.psuspendPerformance != null && contract.powers.psuspendPerformance.isInEffect()) {
-      const obligation = contract.obligations.oproccData
-      if (obligation != null && obligation.suspended() && contract.powers.psuspendPerformance.exerted()) {
+    if (contract.isInEffect() && contract.powers.suspendService != null && contract.powers.suspendService.isInEffect()) {
+      const obligation = contract.obligations.provideDataProcessingService
+      if (obligation != null && obligation.suspended() && contract.powers.suspendService.exerted()) {
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -231,7 +291,7 @@ class HFContract extends Contract {
     }
   }
   
-  async p_presumPerformance_resumed_o_oproccData(ctx, contractId) {
+  async p_suspendActiveRequest_terminated_o_processData(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -239,9 +299,9 @@ class HFContract extends Contract {
     const contract = deserialize(contractState.toString())
     this.initialize(contract)
   
-    if (contract.isInEffect() && contract.powers.presumPerformance != null && contract.powers.presumPerformance.isInEffect()) {
-      const obligation = contract.obligations.oproccData
-      if (obligation != null && obligation.resumed() && contract.powers.presumPerformance.exerted()) {
+    if (contract.isInEffect() && contract.powers.suspendActiveRequest != null && contract.powers.suspendActiveRequest.isInEffect()) {
+      const obligation = contract.obligations.processData
+      if (obligation != null && obligation.terminated() && contract.powers.suspendActiveRequest.exerted()) {
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -252,7 +312,28 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_oproccDataInst(ctx, contractId) {
+  async p_resumeService_resumed_o_provideDataProcessingService(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect() && contract.powers.resumeService != null && contract.powers.resumeService.isInEffect()) {
+      const obligation = contract.obligations.provideDataProcessingService
+      if (obligation != null && obligation.resumed() && contract.powers.resumeService.exerted()) {
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async violateObligation_payment(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -261,7 +342,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.oproccDataInst != null && contract.obligations.oproccDataInst.violated()) {      
+      if (contract.obligations.payment != null && contract.obligations.payment.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -272,7 +353,7 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_oadaptInst(ctx, contractId) {
+  async violateObligation_processData(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -281,7 +362,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.oadaptInst != null && contract.obligations.oadaptInst.violated()) {      
+      if (contract.obligations.processData != null && contract.obligations.processData.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -292,7 +373,7 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_orecordData(ctx, contractId) {
+  async violateObligation_adaptInstruction(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -301,7 +382,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.orecordData != null && contract.obligations.orecordData.violated()) {      
+      if (contract.obligations.adaptInstruction != null && contract.obligations.adaptInstruction.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -312,7 +393,7 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_opaid(ctx, contractId) {
+  async violateObligation_recordData(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -321,7 +402,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.opaid != null && contract.obligations.opaid.violated()) {      
+      if (contract.obligations.recordData != null && contract.obligations.recordData.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -332,7 +413,7 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_odelRecord(ctx, contractId) {
+  async violateObligation_deliverProcessingRecord(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -341,7 +422,7 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.odelRecord != null && contract.obligations.odelRecord.violated()) {      
+      if (contract.obligations.deliverProcessingRecord != null && contract.obligations.deliverProcessingRecord.violated()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -352,7 +433,7 @@ class HFContract extends Contract {
     }
   }
   
-  async violateObligation_oproccData(ctx, contractId) {
+  async violateObligation_provideDataProcessingService(ctx, contractId) {
     const contractState = await ctx.stub.getState(contractId)
     if (contractState == null) {
       return {successful: false}
@@ -361,7 +442,67 @@ class HFContract extends Contract {
     this.initialize(contract)
   
     if (contract.isInEffect()) {
-      if (contract.obligations.oproccData != null && contract.obligations.oproccData.violated()) {      
+      if (contract.obligations.provideDataProcessingService != null && contract.obligations.provideDataProcessingService.violated()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async expirePower_suspendService(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.suspendService != null && contract.powers.suspendService.expired()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async expirePower_suspendActiveRequest(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.suspendActiveRequest != null && contract.powers.suspendActiveRequest.expired()) {      
+        await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
+        return {successful: true}
+      } else {
+        return {successful: false}
+      }
+    } else {
+      return {successful: false}
+    }
+  }
+  
+  async expirePower_resumeService(ctx, contractId) {
+    const contractState = await ctx.stub.getState(contractId)
+    if (contractState == null) {
+      return {successful: false}
+    }
+    const contract = deserialize(contractState.toString())
+    this.initialize(contract)
+  
+    if (contract.isInEffect()) {
+      if (contract.powers.resumeService != null && contract.powers.resumeService.expired()) {      
         await ctx.stub.putState(contractId, Buffer.from(serialize(contract)))
         return {successful: true}
       } else {
@@ -394,50 +535,65 @@ class HFContract extends Contract {
       output += `  ${obligationKey}: ${contract.survivingObligations[obligationKey].state}-${contract.survivingObligations[obligationKey].activeState}\r\n`
     }
     output += 'Events:\r\n'
+    if (contract.requestedDataProcessing._triggered) {
+      output += `  Event "requestedDataProcessing" happened at ${contract.requestedDataProcessing._timestamp}\r\n`
+    } else {
+      output += `  Event "requestedDataProcessing" has not happened\r\n`
+    }
     if (contract.processedData._triggered) {
       output += `  Event "processedData" happened at ${contract.processedData._timestamp}\r\n`
     } else {
       output += `  Event "processedData" has not happened\r\n`
-    }
-    if (contract.adaptedInst._triggered) {
-      output += `  Event "adaptedInst" happened at ${contract.adaptedInst._timestamp}\r\n`
-    } else {
-      output += `  Event "adaptedInst" has not happened\r\n`
-    }
-    if (contract.infringNotified._triggered) {
-      output += `  Event "infringNotified" happened at ${contract.infringNotified._timestamp}\r\n`
-    } else {
-      output += `  Event "infringNotified" has not happened\r\n`
-    }
-    if (contract.suspendNoticed._triggered) {
-      output += `  Event "suspendNoticed" happened at ${contract.suspendNoticed._timestamp}\r\n`
-    } else {
-      output += `  Event "suspendNoticed" has not happened\r\n`
-    }
-    if (contract.modifiedInst._triggered) {
-      output += `  Event "modifiedInst" happened at ${contract.modifiedInst._timestamp}\r\n`
-    } else {
-      output += `  Event "modifiedInst" has not happened\r\n`
     }
     if (contract.recoProcessedData._triggered) {
       output += `  Event "recoProcessedData" happened at ${contract.recoProcessedData._timestamp}\r\n`
     } else {
       output += `  Event "recoProcessedData" has not happened\r\n`
     }
-    if (contract.paid._triggered) {
-      output += `  Event "paid" happened at ${contract.paid._timestamp}\r\n`
+    if (contract.requestedRecordOfProcessing._triggered) {
+      output += `  Event "requestedRecordOfProcessing" happened at ${contract.requestedRecordOfProcessing._timestamp}\r\n`
     } else {
-      output += `  Event "paid" has not happened\r\n`
+      output += `  Event "requestedRecordOfProcessing" has not happened\r\n`
     }
-    if (contract.deliveredRecord._triggered) {
-      output += `  Event "deliveredRecord" happened at ${contract.deliveredRecord._timestamp}\r\n`
+    if (contract.deliveredRecordOfProcessing._triggered) {
+      output += `  Event "deliveredRecordOfProcessing" happened at ${contract.deliveredRecordOfProcessing._timestamp}\r\n`
     } else {
-      output += `  Event "deliveredRecord" has not happened\r\n`
+      output += `  Event "deliveredRecordOfProcessing" has not happened\r\n`
     }
-    if (contract.requestedRecord._triggered) {
-      output += `  Event "requestedRecord" happened at ${contract.requestedRecord._timestamp}\r\n`
+    if (contract.adaptedInstruction._triggered) {
+      output += `  Event "adaptedInstruction" happened at ${contract.adaptedInstruction._timestamp}\r\n`
     } else {
-      output += `  Event "requestedRecord" has not happened\r\n`
+      output += `  Event "adaptedInstruction" has not happened\r\n`
+    }
+    if (contract.infringementNotified._triggered) {
+      output += `  Event "infringementNotified" happened at ${contract.infringementNotified._timestamp}\r\n`
+    } else {
+      output += `  Event "infringementNotified" has not happened\r\n`
+    }
+    if (contract.suspensionNotified._triggered) {
+      output += `  Event "suspensionNotified" happened at ${contract.suspensionNotified._timestamp}\r\n`
+    } else {
+      output += `  Event "suspensionNotified" has not happened\r\n`
+    }
+    if (contract.clientAgreedTermination._triggered) {
+      output += `  Event "clientAgreedTermination" happened at ${contract.clientAgreedTermination._timestamp}\r\n`
+    } else {
+      output += `  Event "clientAgreedTermination" has not happened\r\n`
+    }
+    if (contract.providerAgreedTermination._triggered) {
+      output += `  Event "providerAgreedTermination" happened at ${contract.providerAgreedTermination._timestamp}\r\n`
+    } else {
+      output += `  Event "providerAgreedTermination" has not happened\r\n`
+    }
+    if (contract.paidServiceProvider._triggered) {
+      output += `  Event "paidServiceProvider" happened at ${contract.paidServiceProvider._timestamp}\r\n`
+    } else {
+      output += `  Event "paidServiceProvider" has not happened\r\n`
+    }
+    if (contract.requestedPayment._triggered) {
+      output += `  Event "requestedPayment" happened at ${contract.requestedPayment._timestamp}\r\n`
+    } else {
+      output += `  Event "requestedPayment" has not happened\r\n`
     }
     
     return output
