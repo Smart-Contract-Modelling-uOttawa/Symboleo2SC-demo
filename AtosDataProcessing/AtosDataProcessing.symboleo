@@ -52,7 +52,7 @@ Declarations
 Obligations
   // the atos is obliged to provide data processing services to the client. 
   // the contract is ongoing and it is terminated when the client pays the amount due and both parties agree to terminate the contract. 
-  provideDataProcessingService: O(atos, client, true, Happens(clientAgreedTermination) and Happens(providerAgreedTermination));
+  provideDataProcessingService: O(atos, client, Happens(clientAgreedTermination) or Happens(providerAgreedTermination), Happens(clientAgreedTermination) and Happens(providerAgreedTermination));
   payment: Happens(requestedPayment) -> O(client, atos, true, Happens(paidServiceProvider) and requestedPayment.amount == paidServiceProvider.amount);
   
   // the atos must process data according to the initial instructions or the modified instructions provided by the client.
