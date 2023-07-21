@@ -91,7 +91,9 @@ Powers
   suspendActiveRequest: Happens(Violated(obligations.adaptInstruction)) -> P(atos, client, Happens(suspensionNotified), Terminated(obligations.processData));
   // the client can resume the provideDataProcessingService obligation if the instruction is adapted.
   resumeService: Happens(adaptedInstruction) -> P(client, atos, true, Resumed(obligations.provideDataProcessingService));
-
+// Terminate the contract at the end of the performance
+	pTermination: Happens(Fulfilled(obligations.provideDataProcessingService)) -> P(atos,client, true, Terminated(self));
+	
 Constraints
 	not(atos == client);
 endContract
