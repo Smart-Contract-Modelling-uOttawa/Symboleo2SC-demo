@@ -1,0 +1,624 @@
+MODULE Timer(start)
+ VAR active1  : boolean;
+     expired1 : boolean;
+ ASSIGN
+   init(active1) := start;
+   next(active1) := (active1 | start) ? TRUE : active1;
+   init(expired1) :=  active1 ? {TRUE,FALSE} : FALSE;
+   next(expired1) :=  case
+           active1 & !expired1 : {TRUE,FALSE};
+           expired1           : TRUE;
+           TRUE              : FALSE;
+       esac;
+
+MODULE Event(start)
+ DEFINE 
+ 		_active := (state = active);
+ 		_inactive := (state = inactive);
+        _happened := (state = happened);
+        _expired  := (state = expired);
+ VAR triggered : boolean;
+         timer : Timer(start & !_happened & !_expired);
+         state : {inactive, active, happened, expired};
+		 performer	: {"Processor", "Controller"};
+
+ ASSIGN
+	next(performer)	:= case
+		state=active & start	: {"Processor", "Controller"};
+		TRUE	 				: performer;
+	esac;
+ ASSIGN
+  init(triggered) := FALSE;
+  next(triggered) := (state=active & start) ? {FALSE,TRUE} : FALSE;
+  init(state)     := inactive;
+  next(state)     := case
+    state=inactive & start                          : active;
+    state=active & start & triggered &
+							timer.active1 : happened;
+	state=active & start & timer.expired1 : expired;
+    TRUE                                            : state;
+  esac;
+
+--------------------------------------------------------------------------------------
+-- 'name' is party name
+-- 'removeL/R/P' releases liability, righHolder or performer position of a party
+-- 'addL/R/P' adds liability, righHolder or performer position to a party
+--------------------------------------------------------------------------------------
+MODULE Party(norm, name, removeL, addL, removeR, addR, removeP, addP)
+  DEFINE
+	_name 			:= name;
+	_norm			:= norm;
+	_is_performer	:= p_state=P;
+	_is_liable		:= l_state=L;
+	_is_rightHolder	:= r_state=R;
+
+  VAR
+	l_state	: {Init, L};
+	r_state	: {Init, R};
+	p_state	: {Init, P};
+
+  ASSIGN
+	init(l_state) := Init;
+	next(l_state)	:= case
+		l_state=Init & addL	: L;
+		l_state=L &removeL	: Init;
+		TRUE				: l_state;
+	esac;
+
+  ASSIGN
+	init(r_state) := Init;
+	next(r_state)	:= case
+		r_state=Init & addR	: R;
+		r_state=R & removeR : Init;
+		TRUE				: r_state;
+	esac;
+
+  ASSIGN
+	init(p_state) := Init;
+	next(p_state)	:= case
+		p_state=Init & addP : P;
+		p_state=P & removeP	: Init;
+		TRUE				: p_state;
+	esac;
+
+  INVAR
+	!(addL & removeL) &
+	!(addR & removeR) &
+	!(addP & removeP) &
+	!(_is_rightHolder & _is_liable);
+
+--------------------------------------------------------------------------------------
+-- 'cnt_in_effect'    indicates if the contract is in inEffect state
+-- 'power_suspended'  indicates if a power suspends the obligation
+-- 'cnt_suspended'    indicates if the contract suspension suspends the obligation
+-- 'power_resumed'    indicates if a power resumption resumes the obligation
+-- 'cnt_resumed'      indicates if the contract resumption resumes the obligation
+--------------------------------------------------------------------------------------
+MODULE Obligation(name, surviving, cnt_in_effect, cnt_untermination,
+                  fulfilled, triggered, violated, activated,
+				  expired1, power_suspended, cnt_suspended, terminated, power_resumed,
+				  cnt_resumed, discharged, antecedent)
+  DEFINE
+	_name 		:= name;
+	_surviving	:= surviving;
+	_suspended 	:= (power_suspended | (cnt_suspended & !surviving));
+	_active 	:= (state = inEffect | state = suspension);
+
+  VAR
+	state 		: {not_created, create, inEffect, suspension, discharge,
+				   fulfillment, violation, unsTermination};
+	sus_state	: {not_suspended, sus_by_contract, sus_by_power};
+
+  ASSIGN
+ --NEW: update axioms(surviving obligations are not suspended! informally mentioned)
+	init(sus_state) := not_suspended;
+	next(sus_state)	:= case
+		sus_state=not_suspended & !surviving & cnt_suspended 	: sus_by_contract;
+		sus_state=sus_by_contract & !surviving & cnt_resumed	: not_suspended;
+		sus_state=not_suspended & !surviving & power_suspended 	: sus_by_power;
+		sus_state=sus_by_power & !surviving & power_resumed		: not_suspended;
+		TRUE													: sus_state;
+	esac;
+
+  ASSIGN
+    init(state) := not_created;
+    next(state) := case
+		cnt_in_effect & state=not_created   & triggered & !antecedent : create;
+		cnt_in_effect & state=not_created   & triggered & antecedent  : inEffect;
+		cnt_in_effect & state=create        & antecedent              : inEffect;
+		cnt_in_effect & state=create        & (expired1 | discharged)  : discharge;
+		cnt_in_effect & state=inEffect      & fulfilled               : fulfillment;
+		cnt_in_effect & state=inEffect      & _suspended              : suspension;
+		cnt_in_effect & state=inEffect      & violated                : violation;
+		cnt_in_effect & _active            	& terminated              : unsTermination;
+		cnt_untermination & !surviving  	& _active           	  : unsTermination;
+		sus_state=sus_by_contract & state=suspension  & cnt_resumed   : inEffect;
+		sus_state=sus_by_power	  & state=suspension  & power_resumed   : inEffect;
+		TRUE                                                          : state;
+  esac;
+
+--------------------------------------------------------------------------------------
+-- 'cnt_in_effect'   indicates if the contract is in inEffect state
+-- 'power_suspended' indicates if a power suspends the power
+-- 'cnt_suspended'   indicates if the contract suspension suspends the power
+-- 'power_resumed'   indicates if a power resumption resumes the power
+-- 'cnt_resumed'     indicates if the contract resumption resumes the power
+--------------------------------------------------------------------------------------
+MODULE Power(name, cnt_in_effect, triggered, activated, expired1, power_suspended, cnt_suspended,
+       	     terminated, exerted, power_resumed, cnt_resumed, antecedent)
+  DEFINE
+	_name		 := name;
+	_active 	 := (state = inEffect | state = suspension);
+	_suspended 	 := (power_suspended | cnt_suspended);
+
+  VAR
+	state 		: {not_created, create, inEffect, suspension, sTermination, unsTermination};
+	sus_state	: {not_suspended, sus_by_contract, sus_by_power};
+
+  ASSIGN
+	init(sus_state) := not_suspended;
+	next(sus_state)	:= case
+		sus_state=not_suspended & cnt_suspended 	: sus_by_contract;
+		sus_state=sus_by_contract & cnt_resumed		: not_suspended;
+		sus_state=not_suspended & power_suspended 	: sus_by_power;
+		sus_state=sus_by_power & power_resumed		: not_suspended;
+		TRUE										: sus_state;
+	esac;
+
+  ASSIGN
+   init(state) := not_created;
+   next(state) := case
+     cnt_in_effect & state = not_created 	& triggered & !antecedent : create;
+     cnt_in_effect & state = not_created 	& triggered & antecedent  : inEffect;
+     cnt_in_effect & state = create      	& antecedent              : inEffect;
+     cnt_in_effect & state = create      	& expired1                : unsTermination;
+     cnt_in_effect & state = inEffect    	& exerted                 : sTermination;
+     cnt_in_effect & state = inEffect   	& _suspended              : suspension;
+     cnt_in_effect & state = inEffect    	& expired1                : unsTermination;
+	 cnt_in_effect & _active  			 	& terminated              : unsTermination;
+
+	 sus_state=sus_by_contract & state=suspension  & cnt_resumed 	  : inEffect;
+	 sus_state=sus_by_power	   & state=suspension  & power_resumed      : inEffect;
+
+     TRUE                                          				   	  : state;
+   esac;
+
+--------------------------------------------------------------------------------------
+-- 'assigned_party'				 indicates if a party is assigned to a role
+-- 'revoked_party'				 indicates if a party is unassigned from a role
+-- 'fulfilled_active_obligation' indicates if all active obligations are fulfilled
+--------------------------------------------------------------------------------------
+MODULE Contract(triggered, activated, terminated, suspended, resumed,
+				revoked_party, assigned_party, fulfilled_active_obligation)
+  DEFINE
+	_active 	 := (state = unassign | state = inEffect | state = suspension);
+	_termination := (state = sTermination | state = unsTermination);
+
+	-- obligations/powers' status changes once the contract goes to inEffect state
+	_o_activated := (state = form & activated) |
+						(state = suspension & resumed) |
+						(state = unassign & assigned_party) |
+						(state = inEffect);
+
+  VAR
+	state 		 : { not_created, form, inEffect, suspension, unassign, sTermination, unsTermination};
+
+  ASSIGN
+    init(state) := not_created;
+    next(state) := case
+		state = not_created & triggered  					: form;
+		state = form        & activated  					: inEffect;
+		state = inEffect    & fulfilled_active_obligation  	: sTermination;
+		state = inEffect    & suspended  					: suspension;
+		state = inEffect    & revoked_party  				: unassign;
+		state = inEffect    & terminated 					: unsTermination;
+		state = suspension  & resumed    					: inEffect;
+		state = suspension  & terminated 					: unsTermination;
+		state = unassign    & assigned_party 				: inEffect;
+		state = unassign    & terminated 					: unsTermination;
+		TRUE                             					: state;
+    esac;
+
+--------------------------------------------------------------------------------------
+-- CONTRACT INDEPENDENT CONCEPTS
+--------------------------------------------------------------------------------------
+MODULE Role(party)
+ DEFINE _party := party;
+
+MODULE Asset(owner)
+ DEFINE _owner := owner;
+ 
+MODULE Situation(proposition)
+ DEFINE _holds := proposition;
+ 
+-- WhappensBefore(e,t), ShappensBefore(e,t) are HappensAfter(e,t) are simulated as Happens(e,t) 		 
+MODULE WhappensBefore(event, time)
+ DEFINE _false  := (state = not_happened);
+	    _true := (state = happened);
+ VAR state: {not_happened, happened};
+	ASSIGN
+	    init(state) := not_happened;
+	    next(state) := case
+			state = not_happened & event.event._active & next(event.event._happened) : happened;
+			TRUE : state;
+		esac;
+		
+MODULE ShappensBefore(event, time)
+ DEFINE _false  := (state = not_happened);
+	    _true := (state = happened);
+ VAR state: {not_happened, happened};
+	ASSIGN
+	    init(state) := not_happened;
+	    next(state) := case
+			state = not_happened & event.event._active & next(event.event._happened) : happened;
+			TRUE : state;
+		esac;
+
+MODULE HappensAfter(event, time)
+ DEFINE _false  := (state = not_happened);
+	    _true := (state = happened);
+ VAR state: {not_happened, happened};
+	ASSIGN
+	    init(state) := not_happened;
+	    next(state) := case
+			state = not_happened & event.event._active & next(event.event._happened) : happened;
+			TRUE : state;
+		esac;
+			
+MODULE WhappensBeforeE(event1, event2)
+ DEFINE _false  := (state = not_happened);
+	    _true := (state = happened);
+ VAR state: {not_happened, happened};
+	ASSIGN
+	    init(state) := not_happened;
+	    next(state) := case
+			state = not_happened & event1.event._active & next(event1.event._happened) & !(next(event2_happened)) : happened;
+			TRUE : state;
+		esac;
+	
+MODULE ShappensBeforeE(event1, event2)
+ DEFINE _false  := (state = not_happened);
+        _true 	:= (state = ev1_ev2_happened);
+ VAR state: {not_happened, ev1_happened, ev1_ev2_happened};
+ 	ASSIGN
+   		init(state) := not_happened;
+    	next(state) := case
+			state = not_happened & event1.event._active & next(event1.event._happened) & !(next(event2.event._happened)) : ev1_happened;
+			state = ev1_happened & event2.event._active & next(event2.event._happened) : ev1_ev2_happened;
+			TRUE : state;
+ esac;
+	
+MODULE HappensWithin(event, situation)
+ DEFINE _false  := (state = not_happened);
+        _true 	:= (state = happened);
+ VAR state: {happened, not_happened};
+ 	ASSIGN
+    	init(state) := not_happened;
+    	next(state) := case
+			state = not_happened & event.event._active & next(event.event._happened) & situation._holds : happened;
+			TRUE : state;
+		esac;	
+
+MODULE HappensAfterE(event1, event2)
+ DEFINE _false  := (state = not_happened);
+        _true := (state = ev2_ev1_happened);
+
+ VAR state: {not_happened, ev2_happened, ev2_ev1_happened};
+ 	ASSIGN
+    	init(state) := not_happened;
+    	next(state) := case
+			state = not_happened & !(next(event1_happened)) & event2.event._active & next(event2.event._happened) : ev2_happened;
+			state = ev2_happened & event1.event._active & next(event1.event._happened) : ev2_ev1_happened;
+			TRUE : state;	
+	esac;
+
+--------------------------------------------------------------------------------------
+-- CONTRACT DEPENDENT CONCEPTS
+--------------------------------------------------------------------------------------
+
+MODULE Processor(party)
+	 VAR
+			role : Role(party);
+
+MODULE Controller(party)
+	 VAR
+			role : Role(party);
+
+
+MODULE Instruction (origin, region, categorySubjects, processingActitvity, isPersonal, owner)
+	 VAR
+			asset:Asset(owner);
+
+MODULE Data (id, content, owner)
+	 VAR
+			asset:Asset(owner);
+
+
+MODULE RequestDataProcessing(start, dataPoint)
+	 VAR
+		event : Event(start);
+
+MODULE ProcessData(start, dataId, instruction)
+	 VAR
+		event : Event(start);
+
+MODULE RecoProcessedData(start, dataId)
+	 VAR
+		event : Event(start);
+
+MODULE ModifyInstruction(start, instruction)
+	 VAR
+		event : Event(start);
+
+MODULE RequestRecordOfProcessing(start, dataId)
+	 VAR
+		event : Event(start);
+
+MODULE DeliverRecordOfProcessing(start, dataId, processingInstruction)
+	 VAR
+		event : Event(start);
+
+MODULE Notice(start)
+	 VAR
+		event : Event(start);
+
+MODULE Pay(start, amount)
+	 VAR
+		event : Event(start);
+
+MODULE RequestPayment(start, amount)
+	 VAR
+		event : Event(start);
+
+
+--------------------------------------------------------------------------------------
+-- CONTRACT
+--------------------------------------------------------------------------------------
+MODULE DataProcessingAgreement (atos, client,instruction, dataId, dataPoint, amount)
+
+	CONSTANTS
+	"DataSubject","Customer","ExectingProcessing","DataBroker","OnlinePlatform","ExternalSource","ThirdParty","Other","EU","APAC","BTN","MEA","MAD","SAM","Employees","Customers","Providers","EndUsers","Members","Visitors","Other","Collection","Recording","Organization","Structuring","Storage","Adaption","Retrieval","RemoteAccess","Consultation","Use","Disclosure","Others","provideDataProcessingService","payment","processData","adaptInstruction","recordData","deliverProcessingRecord","suspendService","suspendActiveRequest","resumeService","pTermination", "Processor", "Controller";
+	
+	VAR
+		
+		pTermination_exerted : Event(pTermination.state=inEffect);
+		
+		suspendActiveRequest_exerted : Event(suspendActiveRequest.state=inEffect);
+		
+		suspendService_exerted : Event(suspendService.state=inEffect);
+		
+		resumeService_exerted : Event(resumeService.state=inEffect);
+		
+		requestedDataProcessing : RequestDataProcessing(cnt.state=inEffect, dataPoint);
+		
+		processedData : ProcessData(processData.state=inEffect | cnt.state=inEffect, dataId, instruction);
+		
+		recoProcessedData : RecoProcessedData(recordData.state=inEffect, dataId);
+		
+		requestedRecordOfProcessing : RequestRecordOfProcessing(cnt.state=inEffect, dataId);
+		
+		deliveredRecordOfProcessing : DeliverRecordOfProcessing(deliverProcessingRecord.state=inEffect, dataId, instruction);
+		
+		adaptedInstruction : ModifyInstruction(processData.state=inEffect | adaptInstruction.state=inEffect | cnt.state=inEffect, instruction);
+		
+		infringementNotified : Notice(cnt.state=inEffect);
+		
+		suspensionNotified : Notice(suspendService.state=create | suspendActiveRequest.state=create);
+		
+		clientAgreedTermination : Notice(provideDataProcessingService.state=create | provideDataProcessingService.state=inEffect);
+		
+		providerAgreedTermination : Notice(provideDataProcessingService.state=create | provideDataProcessingService.state=inEffect);
+		
+		paidServiceProvider : Pay(payment.state=inEffect, amount);
+		
+		requestedPayment : RequestPayment(cnt.state=inEffect, amount);
+		
+		
+		cnt_succ_Termination : Situation((cnt.state=inEffect)
+		& !(provideDataProcessingService._active)
+		& !(payment._active)
+		& !(processData._active)
+		& !(adaptInstruction._active)
+		& !(recordData._active)
+		& !(deliverProcessingRecord._active)
+		);
+		
+		--------------
+		-- SITUATIONS
+		--------------
+		pTermination_exertion : Situation ((pTermination._active & pTermination_exerted._happened & pTermination_exerted.performer = pTermination_creditor._name & pTermination_creditor._is_performer ));
+		
+		DataProcessingAgreement_termination : Situation ((pTermination._active & pTermination_exerted._happened & pTermination_exerted.performer = pTermination_creditor._name & pTermination_creditor._is_performer ));
+		
+		suspendActiveRequest_exertion : Situation ((suspendActiveRequest._active & suspendActiveRequest_exerted._happened & suspendActiveRequest_exerted.performer = suspendActiveRequest_creditor._name & suspendActiveRequest_creditor._is_performer ));
+		
+		processData_termination : Situation ((suspendActiveRequest._active & suspendActiveRequest_exerted._happened & suspendActiveRequest_exerted.performer = suspendActiveRequest_creditor._name & suspendActiveRequest_creditor._is_performer ));
+		
+		suspendService_exertion : Situation ((suspendService._active & suspendService_exerted._happened & suspendService_exerted.performer = suspendService_creditor._name & suspendService_creditor._is_performer ));
+		
+		provideDataProcessingService_suspension : Situation ((suspendService._active & suspendService_exerted._happened & suspendService_exerted.performer = suspendService_creditor._name & suspendService_creditor._is_performer ));
+		
+		resumeService_exertion : Situation ((resumeService._active & resumeService_exerted._happened & resumeService_exerted.performer = resumeService_creditor._name & resumeService_creditor._is_performer ));
+		
+		provideDataProcessingService_resumption : Situation ((resumeService._active & resumeService_exerted._happened & resumeService_exerted.performer = resumeService_creditor._name & resumeService_creditor._is_performer ));
+		
+		provideDataProcessingService_violated : Situation ((clientAgreedTermination.event._expired | (clientAgreedTermination.event._happened & !(clientAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer)))|(providerAgreedTermination.event._expired | (providerAgreedTermination.event._happened & !(providerAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer))));
+		
+		payment_violated : Situation ((paidServiceProvider.event._expired | (paidServiceProvider.event._happened & !(paidServiceProvider.event.performer = payment_debtor._name & payment_debtor._is_performer)))|requestedPayment.amount!=paidServiceProvider.amount);
+		
+		processData_violated : Situation ((processedData.event._expired | (processedData.event._happened & !(processedData.event.performer = processData_debtor._name & processData_debtor._is_performer)))|(((adaptedInstruction.event._expired | (adaptedInstruction.event._happened & !(adaptedInstruction.event.performer = processData_debtor._name & processData_debtor._is_performer)))|processedData.instruction.origin!=adaptedInstruction.instruction.origin|processedData.instruction.region!=adaptedInstruction.instruction.region|processedData.instruction.categorySubjects!=adaptedInstruction.instruction.categorySubjects|processedData.instruction.processingActitvity!=adaptedInstruction.instruction.processingActitvity|processedData.dataId!=requestedDataProcessing.dataPoint.id)&(processedData.instruction.origin!=instruction.origin|processedData.instruction.region!=instruction.region|processedData.instruction.categorySubjects!=instruction.categorySubjects|processedData.instruction.processingActitvity!=instruction.processingActitvity|processedData.dataId!=requestedDataProcessing.dataPoint.id)));
+		
+		adaptInstruction_violated : Situation ((adaptedInstruction.event._expired | (adaptedInstruction.event._happened & !(adaptedInstruction.event.performer = adaptInstruction_debtor._name & adaptInstruction_debtor._is_performer))));
+		
+		recordData_violated : Situation ((recoProcessedData.event._expired | (recoProcessedData.event._happened & !(recoProcessedData.event.performer = recordData_debtor._name & recordData_debtor._is_performer)))|processedData.dataId!=recoProcessedData.dataId);
+		
+		deliverProcessingRecord_violated : Situation ((deliveredRecordOfProcessing.event._expired | (deliveredRecordOfProcessing.event._happened & !(deliveredRecordOfProcessing.event.performer = deliverProcessingRecord_debtor._name & deliverProcessingRecord_debtor._is_performer)))|(requestedRecordOfProcessing.dataId!=deliveredRecordOfProcessing.dataId));
+		
+		provideDataProcessingService_expired : Situation ((clientAgreedTermination.event._expired | (clientAgreedTermination.event._happened & !(clientAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer)))&(providerAgreedTermination.event._expired | (providerAgreedTermination.event._happened & !(providerAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer))));
+		
+		payment_expired : Situation (FALSE);
+		
+		processData_expired : Situation (FALSE);
+		
+		adaptInstruction_expired : Situation (FALSE);
+		
+		recordData_expired : Situation (FALSE);
+		
+		deliverProcessingRecord_expired : Situation (FALSE);
+		
+		suspendService_expired : Situation ((suspensionNotified.event._expired | (suspensionNotified.event._happened & !(suspensionNotified.event.performer = suspendService_debtor._name & suspendService_debtor._is_performer))));
+		
+		suspendActiveRequest_expired : Situation ((suspensionNotified.event._expired | (suspensionNotified.event._happened & !(suspensionNotified.event.performer = suspendActiveRequest_debtor._name & suspendActiveRequest_debtor._is_performer))));
+		
+		resumeService_expired : Situation (FALSE);
+		
+		pTermination_expired : Situation (FALSE);
+		
+		provideDataProcessingService_antecedent : Situation ((clientAgreedTermination.event._happened) | (providerAgreedTermination.event._happened));
+		
+		suspendService_antecedent : Situation ((suspensionNotified.event._happened));
+		
+		suspendActiveRequest_antecedent : Situation ((suspensionNotified.event._happened));
+		
+		provideDataProcessingService_consequent : Situation ((clientAgreedTermination.event._happened & clientAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer) & (providerAgreedTermination.event._happened & providerAgreedTermination.event.performer = provideDataProcessingService_debtor._name & provideDataProcessingService_debtor._is_performer));
+		
+		payment_consequent : Situation ((paidServiceProvider.event._happened & paidServiceProvider.event.performer = payment_debtor._name & payment_debtor._is_performer) & requestedPayment.amount=paidServiceProvider.amount);
+		
+		processData_consequent : Situation ((processedData.event._happened & processedData.event.performer = processData_debtor._name & processData_debtor._is_performer) & (((adaptedInstruction.event._happened & adaptedInstruction.event.performer = processData_debtor._name & processData_debtor._is_performer) & processedData.instruction.origin=adaptedInstruction.instruction.origin & processedData.instruction.region=adaptedInstruction.instruction.region & processedData.instruction.categorySubjects=adaptedInstruction.instruction.categorySubjects & processedData.instruction.processingActitvity=adaptedInstruction.instruction.processingActitvity & processedData.dataId=requestedDataProcessing.dataPoint.id) | (processedData.instruction.origin=instruction.origin & processedData.instruction.region=instruction.region & processedData.instruction.categorySubjects=instruction.categorySubjects & processedData.instruction.processingActitvity=instruction.processingActitvity & processedData.dataId=requestedDataProcessing.dataPoint.id)));
+		
+		adaptInstruction_consequent : Situation ((adaptedInstruction.event._happened & adaptedInstruction.event.performer = adaptInstruction_debtor._name & adaptInstruction_debtor._is_performer));
+		
+		recordData_consequent : Situation ((recoProcessedData.event._happened & recoProcessedData.event.performer = recordData_debtor._name & recordData_debtor._is_performer) & processedData.dataId=recoProcessedData.dataId);
+		
+		deliverProcessingRecord_consequent : Situation ((deliveredRecordOfProcessing.event._happened & deliveredRecordOfProcessing.event.performer = deliverProcessingRecord_debtor._name & deliverProcessingRecord_debtor._is_performer) & (requestedRecordOfProcessing.dataId=deliveredRecordOfProcessing.dataId));
+		
+		payment_trigger : Situation ((requestedPayment.event._happened));
+		
+		processData_trigger : Situation ((requestedDataProcessing.event._happened));
+		
+		adaptInstruction_trigger : Situation ((infringementNotified.event._happened));
+		
+		recordData_trigger : Situation ((processedData.event._happened));
+		
+		deliverProcessingRecord_trigger : Situation ((requestedRecordOfProcessing.event._happened));
+		
+		suspendService_trigger : Situation (adaptInstruction.state=violation);
+		
+		suspendActiveRequest_trigger : Situation (adaptInstruction.state=violation);
+		
+		resumeService_trigger : Situation ((adaptedInstruction.event._happened));
+		
+		pTermination_trigger : Situation (provideDataProcessingService.state=fulfillment);
+		
+		
+		cnt: Contract(TRUE, TRUE, DataProcessingAgreement_termination._holds, FALSE, FALSE, FALSE, FALSE, cnt_succ_Termination._holds);
+			
+		--------------
+		-- OBLIGATIONS
+		--------------		
+		provideDataProcessingService : Obligation("provideDataProcessingService", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, provideDataProcessingService_consequent._holds, TRUE, provideDataProcessingService_violated._holds, FALSE, provideDataProcessingService_expired._holds, provideDataProcessingService_suspension._holds, FALSE, FALSE, provideDataProcessingService_resumption._holds, FALSE, FALSE, provideDataProcessingService_antecedent._holds);
+				
+		payment : Obligation("payment", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, payment_consequent._holds, payment_trigger._holds, payment_violated._holds, FALSE, payment_expired._holds, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
+				
+		processData : Obligation("processData", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, processData_consequent._holds, processData_trigger._holds, processData_violated._holds, FALSE, processData_expired._holds, FALSE, FALSE, processData_termination._holds, FALSE, FALSE, FALSE, TRUE);
+				
+		adaptInstruction : Obligation("adaptInstruction", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, adaptInstruction_consequent._holds, adaptInstruction_trigger._holds, adaptInstruction_violated._holds, FALSE, adaptInstruction_expired._holds, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
+				
+		recordData : Obligation("recordData", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, recordData_consequent._holds, recordData_trigger._holds, recordData_violated._holds, FALSE, recordData_expired._holds, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
+				
+		deliverProcessingRecord : Obligation("deliverProcessingRecord", FALSE, cnt._o_activated, DataProcessingAgreement_termination._holds, deliverProcessingRecord_consequent._holds, deliverProcessingRecord_trigger._holds, deliverProcessingRecord_violated._holds, FALSE, deliverProcessingRecord_expired._holds, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
+				
+		
+		--------------
+		-- POWERS
+		--------------
+		suspendService : Power("suspendService", cnt._o_activated, suspendService_trigger._holds, FALSE, suspendService_expired._holds, FALSE, FALSE, FALSE, suspendService_exertion._holds, FALSE, FALSE, suspendService_antecedent._holds);
+		
+		suspendActiveRequest : Power("suspendActiveRequest", cnt._o_activated, suspendActiveRequest_trigger._holds, FALSE, suspendActiveRequest_expired._holds, FALSE, FALSE, FALSE, suspendActiveRequest_exertion._holds, FALSE, FALSE, suspendActiveRequest_antecedent._holds);
+		
+		resumeService : Power("resumeService", cnt._o_activated, resumeService_trigger._holds, FALSE, resumeService_expired._holds, FALSE, FALSE, FALSE, resumeService_exertion._holds, FALSE, FALSE, TRUE);
+		
+		pTermination : Power("pTermination", cnt._o_activated, pTermination_trigger._holds, FALSE, pTermination_expired._holds, FALSE, FALSE, FALSE, pTermination_exertion._holds, FALSE, FALSE, TRUE);
+		
+		
+		--------------
+		-- PARTIES
+		--------------
+		provideDataProcessingService_debtor : Party(provideDataProcessingService._name, atos.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		provideDataProcessingService_creditor : Party(provideDataProcessingService._name, client.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		payment_debtor : Party(payment._name, client.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		payment_creditor : Party(payment._name, atos.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		processData_debtor : Party(processData._name, atos.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		processData_creditor : Party(processData._name, client.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		adaptInstruction_debtor : Party(adaptInstruction._name, client.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		adaptInstruction_creditor : Party(adaptInstruction._name, atos.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		recordData_debtor : Party(recordData._name, atos.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		recordData_creditor : Party(recordData._name, client.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		deliverProcessingRecord_debtor : Party(deliverProcessingRecord._name, atos.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		deliverProcessingRecord_creditor : Party(deliverProcessingRecord._name, client.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		
+		suspendService_debtor : Party(suspendService._name, client.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		suspendService_creditor : Party(suspendService._name, atos.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		suspendActiveRequest_debtor : Party(suspendActiveRequest._name, client.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		suspendActiveRequest_creditor : Party(suspendActiveRequest._name, atos.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		resumeService_debtor : Party(resumeService._name, atos.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		resumeService_creditor : Party(resumeService._name, client.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		pTermination_debtor : Party(pTermination._name, client.role._party, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE);
+		pTermination_creditor : Party(pTermination._name, atos.role._party, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+		
+		
+		-----------------------
+		-- IMPLICIT CONSTRAINTS
+		-----------------------
+		
+		--------------
+		-- CONSTRAINTS
+		--------------
+		INVAR 
+			!((atos.role._party = client.role._party));
+		--------------
+		-- Assignment
+		--------------
+
+
+MODULE main
+
+FROZENVAR
+
+origin: {"DataSubject", "Customer", "ExectingProcessing", "DataBroker", "OnlinePlatform", "ExternalSource", "ThirdParty", "Other"};
+region: {"EU", "APAC", "BTN", "MEA", "MAD", "SAM"};
+categorySubjects: {"Employees", "Customers", "Providers", "EndUsers", "Members", "Visitors", "Other"};
+processingActitvity: {"Collection", "Recording", "Organization", "Structuring", "Storage", "Adaption", "Retrieval", "RemoteAccess", "Consultation",
+  	                             "Use", "Disclosure", "Others"}; 
+dataId: {1, 3, 4, 5};
+
+VAR
+	amount : real;
+	isPersonal : boolean;
+	
+-- CONSTRAINTS
+	INVAR 10000.0 <= amount & amount <= 10000.0;
+	
+--ASSIGN
+	
+	--init(isPersonal):= FALSE;
+VAR
+atos: Processor("Processor");
+client: Controller("Controller");
+instruction:  Instruction(origin, region, categorySubjects,processingActitvity, isPersonal, "Controller");
+dataPoint: Data(dataId, "Data need to be processed", "Controller");
+DataP_cnt : DataProcessingAgreement(atos, client, instruction, dataId, dataPoint, amount);
+
+--* Number      : P1
+--* Description : A contract eventually terminates.
+--* Type        : Desirable property
+LTLSPEC NAME LTL11 := F(DataP_cnt.cnt.state = sTermination | DataP_cnt.cnt.state = unsTermination)
