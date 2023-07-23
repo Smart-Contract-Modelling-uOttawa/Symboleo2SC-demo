@@ -616,9 +616,9 @@ atos: Processor("Processor");
 client: Controller("Controller");
 instruction:  Instruction(origin, region, categorySubjects,processingActitvity, isPersonal, "Controller");
 dataPoint: Data(dataId, "Data need to be processed", "Controller");
-DataP_cnt : DataProcessingAgreement(atos, client, instruction, dataId, dataPoint, amount);
+DataProcessing_cnt : DataProcessingAgreement(atos, client, instruction, dataId, dataPoint, amount);
 
 --* Number      : P1
 --* Description : A contract eventually terminates.
 --* Type        : Desirable property
-LTLSPEC NAME LTL11 := F(DataP_cnt.cnt.state = sTermination | DataP_cnt.cnt.state = unsTermination)
+LTLSPEC NAME LTL11 := F(DataProcessing_cnt.cnt.state = sTermination | DataProcessing_cnt.cnt.state = unsTermination)
