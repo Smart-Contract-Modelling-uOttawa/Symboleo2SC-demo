@@ -12,8 +12,8 @@ This folder contains the generated smart contract of the data processing agreeme
 ## Contract Verification
 To check the contract's liveness and safety properties:
 - Install [nuXmv](https://nuxmv.fbk.eu/download.html) 
-- copy [nuXmv Model of the Data Processing Agreement](DataProcessingAgreement.smv) and past it into the bin directory of the installed nuXmv directory
-- in the command Prompt:
+- Copy [nuXmv Model of the Data Processing Agreement](DataProcessingAgreement.smv) and past it into the bin directory of the installed nuXmv directory
+- In the command Prompt:
 - ```
   c:> cd C:\nuXmv-2.0.0-win64\bin
   C:\nuXmv-2.0.0-win64\bin > nuxmv.exe -int C:\nuXmv-2.0.0-win64\bin\DataProcessingAgreement.smv
