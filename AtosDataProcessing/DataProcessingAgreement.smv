@@ -622,3 +622,7 @@ DataProcessing_cnt : DataProcessingAgreement(atos, client, instruction, dataId, 
 --* Description : A contract eventually terminates.
 --* Type        : Desirable property
 LTLSPEC NAME LTL11 := F(DataProcessing_cnt.cnt.state = sTermination | DataProcessing_cnt.cnt.state = unsTermination)
+--* Number      : P2
+--* Description : A contract eventually terminates unsuccessfully if the updated instruction was not provided when it was required by atos.
+--* Type        : Desirable property
+LTLSPEC NAME LTL22 := G(DataProcessing_cnt.processedData.event._happened & DataProcessing_cnt.suspendService.state = inEffect & !DataProcessing_cnt.adaptedInstruction.event._happened -> F(DataProcessing_cnt.cnt.state = unsTermination)) 
