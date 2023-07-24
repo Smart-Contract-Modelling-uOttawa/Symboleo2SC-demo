@@ -606,7 +606,7 @@ VAR
 	isPersonal : boolean;
 	
 -- CONSTRAINTS
-	INVAR 10000.0 <= amount & amount <= 10000.0;
+	INVAR 10000.0 <= amount & amount <= 10500.0;
 	
 --ASSIGN
 	
