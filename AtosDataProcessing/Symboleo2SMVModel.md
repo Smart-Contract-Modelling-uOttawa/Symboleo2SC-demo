@@ -25,6 +25,7 @@ Change it to:
 		state=active & start: {"Processor", "Controller"};
 ~~~
 - Under contract section. In the contract module, add the two parties as parameters too.
+- all the variables of type Asset, change the owner parameter (i.e, atos) to atos.role._party
 	For example MODULE DataProcessingAgreement (atos, client, instruction, dataId, dataPoint, amount)
 	--> will be:
 	 MODULE DataProcessingAgreement (atos, client, instruction, dataId, dataPoint, amount)
